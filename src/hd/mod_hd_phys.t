@@ -55,6 +55,17 @@ module mod_hd_phys
   !> Helium abundance over Hydrogen
   double precision, public, protected  :: He_abundance=0.1d0
 
+  !> Whether FLD module is used
+  logical, public, protected              :: hd_fld = .true.
+
+  !> Index of the radiation energy
+  integer, public, protected              :: rad_e
+
+  !> Indices of the radiation flux
+  integer, allocatable, public, protected :: rad_flux(:)
+
+
+
   ! Public methods
   public :: hd_phys_init
   public :: hd_kin_en
@@ -183,6 +194,16 @@ contains
        e_ = -1
        p_ = -1
     end if
+
+    ! Set radiation energy variable
+    !if (hd_fld) then
+       rad_e = var_set_radiation_energy()
+    !end if
+
+    ! Set radiation energy variable
+    !if (hd_fld) then
+       rad_flux(:) = var_set_radiation_flux(ndir)
+    !end if
 
     allocate(tracer(hd_n_tracer))
 

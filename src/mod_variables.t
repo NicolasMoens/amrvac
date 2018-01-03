@@ -48,6 +48,12 @@ module mod_variables
   !> Indices of the magnetic field components
   integer, allocatable, protected :: iw_mag(:)
 
+  !> Index of the energy density
+  integer, protected :: iw_rad_e = -1
+
+  !> Indices of the momentum density
+  integer, allocatable, protected :: iw_rad_flux(:)
+
 contains
 
   !> Set generic flux variable
@@ -161,5 +167,34 @@ contains
       write(prim_wnames(nwflux),"(A1,I1)") "b", idir
     end do
   end function var_set_bfield
+
+  !> Set radiation energy variable
+  function var_set_radiation_energy() result(iw)
+    integer :: iw
+
+    nwflux              = nwflux + 1
+    nwfluxbc            = nwfluxbc + 1
+    nw                  = nw + 1
+    iw_rad_e            = nwflux
+    iw                  = nwflux
+    cons_wnames(nwflux) = 'rad_e'
+    prim_wnames(nwflux) = 'rad_e'
+  end function var_set_radiation_energy
+
+  !> Set radiation_flux variables
+  function var_set_radiation_flux(ndir) result(iw)
+    integer, intent(in) :: ndir
+    integer             :: iw(ndir), idir
+
+    do idir = 1, ndir
+      nwflux       = nwflux + 1
+      nwfluxbc     = nwfluxbc + 1
+      nw           = nw + 1
+      iw_rad_flux(idir) = nwflux
+      iw(idir)     = nwflux
+      write(cons_wnames(nwflux),"(A1,I1)") "rad_flux", idir
+      write(prim_wnames(nwflux),"(A1,I1)") "rad_flux", idir
+    end do
+  end function var_set_radiation_flux
 
 end module mod_variables

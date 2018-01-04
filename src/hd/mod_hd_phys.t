@@ -749,6 +749,10 @@ contains
     use mod_viscosity, only: viscosity_add_source
     use mod_gravity, only: gravity_add_source
 
+    !> NICOLAS MOENS
+    use mod_fld, only: fld_add_source
+    !use mod_fld, only: fld_adv_radparam
+
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: qdt
     double precision, intent(in)    :: wCT(ixI^S, 1:nw), x(ixI^S, 1:ndim)
@@ -773,6 +777,12 @@ contains
     if(hd_gravity) then
       call gravity_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
            hd_energy,qsourcesplit,active)
+    end if
+
+    !> NICOLAS MOENS
+    if(hd_fld) then
+      !call fld_adv_radparam(qdt,ixI^L,ixO^L,wCT,w,x)
+      call fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x)
     end if
 
   end subroutine hd_add_source

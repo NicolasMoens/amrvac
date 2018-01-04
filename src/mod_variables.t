@@ -50,11 +50,11 @@ module mod_variables
 
   !> NICOLAS MOENS
   !> Index of the radiation energy density
-  integer, protected :: iw_rad_e = -1
+  integer, protected :: iw_r_e = -1
 
   !> NICOLAS MOENS
   !> Indices of the radiation flux density
-  integer, allocatable, protected :: iw_rad_flux(:)
+  integer, allocatable, protected :: iw_r_f(:)
 
 contains
 
@@ -178,7 +178,7 @@ contains
     nwflux              = nwflux + 1
     nwfluxbc            = nwfluxbc + 1
     nw                  = nw + 1
-    iw_rad_e            = nwflux
+    iw_r_e            = nwflux
     iw                  = nwflux
     cons_wnames(nwflux) = 'r_e'
     prim_wnames(nwflux) = 'r_e'
@@ -190,15 +190,15 @@ contains
     integer, intent(in) :: ndir
     integer             :: iw(ndir), idir
 
-    if (allocated(iw_rad_flux)) &
+    if (allocated(iw_r_f)) &
          call mpistop("Error: set_rad_flux was already called")
-    allocate(iw_rad_flux(ndir))
+    allocate(iw_r_f(ndir))
 
     do idir = 1, ndir
       nwflux       = nwflux + 1
       nwfluxbc     = nwfluxbc + 1
       nw           = nw + 1
-      iw_rad_flux(idir) = nwflux
+      iw_r_f(idir) = nwflux
       iw(idir)     = nwflux
       write(cons_wnames(nwflux),"(A1,I1)") "r_f", idir
       write(prim_wnames(nwflux),"(A1,I1)") "r_f", idir

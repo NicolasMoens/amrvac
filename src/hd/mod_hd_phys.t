@@ -55,14 +55,17 @@ module mod_hd_phys
   !> Helium abundance over Hydrogen
   double precision, public, protected  :: He_abundance=0.1d0
 
+  !> NICOLAS MOENS
   !> Whether FLD module is used
   logical, public, protected              :: hd_fld = .true.
 
+  !> NICOLAS MOENS
   !> Index of the radiation energy
-  integer, public, protected              :: rad_e
+  integer, public, protected              :: r_e
 
+  !> NICOLAS MOENS
   !> Indices of the radiation flux
-  integer, allocatable, public, protected :: rad_flux(:)
+  integer, allocatable, public, protected :: r_f(:)
 
 
 
@@ -186,6 +189,16 @@ contains
     allocate(mom(ndir))
     mom(:) = var_set_momentum(ndir)
 
+    !> NICOLAS MOENS
+    !> set radiation flux and energy mod_variables
+    if (hd_fld) then
+        allocate(r_f(ndir))
+        r_f(:) = var_set_radiation_flux(ndir)
+        r_e = var_set_radiation_energy()
+    else
+        r_e = -1
+    end if
+
     ! Set index of energy variable
     if (hd_energy) then
        e_ = var_set_energy()
@@ -194,16 +207,6 @@ contains
        e_ = -1
        p_ = -1
     end if
-
-    ! Set radiation energy variable
-    !if (hd_fld) then
-       rad_e = var_set_radiation_energy()
-    !end if
-
-    ! Set radiation energy variable
-    !if (hd_fld) then
-       rad_flux(:) = var_set_radiation_flux(ndir)
-    !end if
 
     allocate(tracer(hd_n_tracer))
 
@@ -259,6 +262,10 @@ contains
        call particles_init()
        phys_req_diagonal = .true.
     end if
+
+    !> NICOLAS MOENS
+    ! Initialize FLD module
+    ! if (hd_fld) call fld_init()
 
     ! Check whether custom flux types have been defined
     if (.not. allocated(flux_type)) then

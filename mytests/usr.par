@@ -32,10 +32,10 @@
 
 &boundlist
   nghostcells  =   2
-  typeboundary_min1 = 4*'special'
-  typeboundary_max1 = 4*'cont'
-  typeboundary_min2 = 4*'special'
-  typeboundary_max2 = 4*'special'
+  typeboundary_min1 = 7*'special'
+  typeboundary_max1 = 7*'cont'
+  typeboundary_min2 = 7*'special'
+  typeboundary_max2 = 7*'special'
 /
 
  &meshlist

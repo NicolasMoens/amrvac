@@ -44,9 +44,14 @@ contains
     w(ix^S, mom(2)) = 0.
     w(ix^S, e_) = 1.
 
-    !w(ix^S,rad_e) = 2.
-    !w(ix^S,rad_flux(1)) = 1./( 1 + x(ix^S, 1)**2 + x(ixG^S, 2)**2 )
-    !w(ix^S,rad_flux(1)) = 1.
+    w(ix^S,r_e) = 2.
+    w(ix^S,r_f(1)) = 1./( 1 + x(ix^S, 1)**2 + x(ixG^S, 2)**2 )
+    w(ix^S,r_f(2)) = 0.
+
+    !-------------------------------------------------------------
+    print*,w(ix^S,r_f(2))
+
+    !-------------------------------------------------------------
 
   end subroutine initial_conditions
 
@@ -77,9 +82,9 @@ contains
       w(ix1,ixImin2:ixImax2, mom(2)) = 1.
       w(ix1,ixImin2:ixImax2, e_) = 1.
 
-      !w(ix1,ixImin2:ixImax2, rad_flux(1)) = 0.
-      !w(ix1,ixImin2:ixImax2, rad_flux(2)) = 1.
-      !w(ix1,ixImin2:ixImax2, rad_e) = 2.
+      w(ix1,ixImin2:ixImax2, r_f(1)) = 0.
+      w(ix1,ixImin2:ixImax2, r_f(2)) = 1.
+      w(ix1,ixImin2:ixImax2, r_e) = 2.
     end do
 
 

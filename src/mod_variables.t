@@ -48,10 +48,12 @@ module mod_variables
   !> Indices of the magnetic field components
   integer, allocatable, protected :: iw_mag(:)
 
-  !> Index of the energy density
+  !> NICOLAS MOENS
+  !> Index of the radiation energy density
   integer, protected :: iw_rad_e = -1
 
-  !> Indices of the momentum density
+  !> NICOLAS MOENS
+  !> Indices of the radiation flux density
   integer, allocatable, protected :: iw_rad_flux(:)
 
 contains
@@ -168,6 +170,7 @@ contains
     end do
   end function var_set_bfield
 
+  !> NICOLAS MOENS
   !> Set radiation energy variable
   function var_set_radiation_energy() result(iw)
     integer :: iw
@@ -177,14 +180,19 @@ contains
     nw                  = nw + 1
     iw_rad_e            = nwflux
     iw                  = nwflux
-    cons_wnames(nwflux) = 'rad_e'
-    prim_wnames(nwflux) = 'rad_e'
+    cons_wnames(nwflux) = 'r_e'
+    prim_wnames(nwflux) = 'r_e'
   end function var_set_radiation_energy
 
+  !> NICOLAS MOENS
   !> Set radiation_flux variables
   function var_set_radiation_flux(ndir) result(iw)
     integer, intent(in) :: ndir
     integer             :: iw(ndir), idir
+
+    if (allocated(iw_rad_flux)) &
+         call mpistop("Error: set_rad_flux was already called")
+    allocate(iw_rad_flux(ndir))
 
     do idir = 1, ndir
       nwflux       = nwflux + 1
@@ -192,8 +200,8 @@ contains
       nw           = nw + 1
       iw_rad_flux(idir) = nwflux
       iw(idir)     = nwflux
-      write(cons_wnames(nwflux),"(A1,I1)") "rad_flux", idir
-      write(prim_wnames(nwflux),"(A1,I1)") "rad_flux", idir
+      write(cons_wnames(nwflux),"(A1,I1)") "r_f", idir
+      write(prim_wnames(nwflux),"(A1,I1)") "r_f", idir
     end do
   end function var_set_radiation_flux
 

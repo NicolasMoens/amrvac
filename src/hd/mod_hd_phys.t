@@ -59,15 +59,6 @@ module mod_hd_phys
   !> Whether FLD module is used
   logical, public, protected              :: hd_fld = .true.
 
-  !> NICOLAS MOENS
-  !> Index of the radiation energy
-  integer, public, protected              :: r_e
-
-  !> NICOLAS MOENS
-  !> Indices of the radiation flux
-  integer, allocatable, public, protected :: r_f(:)
-
-
 
   ! Public methods
   public :: hd_phys_init
@@ -86,7 +77,7 @@ contains
 
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, He_abundance, SI_unit, hd_particles
+    hd_gravity, He_abundance, SI_unit, hd_particles, hd_fld
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -169,6 +160,7 @@ contains
     use mod_global_parameters
     use mod_thermal_conduction
     use mod_radiative_cooling
+    use mod_fld                       !> NICOLAS MOENS
     use mod_dust, only: dust_init
     use mod_viscosity, only: viscosity_init
     use mod_gravity, only: gravity_init
@@ -188,16 +180,6 @@ contains
 
     allocate(mom(ndir))
     mom(:) = var_set_momentum(ndir)
-
-    !> NICOLAS MOENS
-    !> set radiation flux and energy mod_variables
-    if (hd_fld) then
-        allocate(r_f(ndir))
-        r_f(:) = var_set_radiation_flux(ndir)
-        r_e = var_set_radiation_energy()
-    else
-        r_e = -1
-    end if
 
     ! Set index of energy variable
     if (hd_energy) then
@@ -265,7 +247,11 @@ contains
 
     !> NICOLAS MOENS
     ! Initialize FLD module
-    ! if (hd_fld) call fld_init()
+    if (hd_fld) then
+      if (.not. hd_energy) &
+           call mpistop("radiative cooling needs hd_energy=T")
+      call fld_init()
+    end if
 
     ! Check whether custom flux types have been defined
     if (.not. allocated(flux_type)) then
@@ -748,10 +734,7 @@ contains
     use mod_dust, only: dust_add_source
     use mod_viscosity, only: viscosity_add_source
     use mod_gravity, only: gravity_add_source
-
-    !> NICOLAS MOENS
-    use mod_fld, only: fld_add_source
-    !use mod_fld, only: fld_adv_radparam
+    use mod_fld, only: fld_add_source         !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: qdt
@@ -781,8 +764,9 @@ contains
 
     !> NICOLAS MOENS
     if(hd_fld) then
-      !call fld_adv_radparam(qdt,ixI^L,ixO^L,wCT,w,x)
-      call fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x)
+      call fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
+           hd_energy,qsourcesplit,active)
+      print*, "CALLING FLD_ADD_SOURCE", w(5,5,iw_mom(1))
     end if
 
   end subroutine hd_add_source

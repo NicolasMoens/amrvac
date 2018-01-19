@@ -58,6 +58,9 @@ module mod_hd_phys
   !> NICOLAS MOENS
   !> Whether FLD module is used
   logical, public, protected              :: hd_fld = .true.
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!    DEFAULT SHOULD BE .false., FIND WORKAROUND !!     !!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
   ! Public methods
@@ -160,7 +163,7 @@ contains
     use mod_global_parameters
     use mod_thermal_conduction
     use mod_radiative_cooling
-    use mod_fld                       !> NICOLAS MOENS
+    use mod_fld, only: fld_init                  !> NICOLAS MOENS
     use mod_dust, only: dust_init
     use mod_viscosity, only: viscosity_init
     use mod_gravity, only: gravity_init
@@ -764,9 +767,10 @@ contains
 
     !> NICOLAS MOENS
     if(hd_fld) then
+      print*, "CALLING FLD_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, active
       call fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
            hd_energy,qsourcesplit,active)
-      print*, "CALLING FLD_ADD_SOURCE", w(5,5,iw_mom(1))
+      print*, "AFTER CALLING", w(5,5,iw_mom(1)), qsourcesplit, active
     end if
 
   end subroutine hd_add_source

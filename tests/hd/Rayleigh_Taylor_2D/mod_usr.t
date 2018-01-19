@@ -7,6 +7,8 @@ contains
 
   subroutine usr_init()
     use mod_usr_methods
+    
+    call set_coordinate_system("Cartesian_2D")
 
     usr_init_one_grid => initonegrid_usr
     usr_gravity=> gravity

@@ -1,9 +1,9 @@
 !> Module for including flux limited diffusion in hydrodynamics simulations
 module mod_fld
-  implicit none
+    implicit none
 
     !> source split or not
-    logical :: fld_split= .false.
+    logical :: fld_split = .false.
 
     !> Opacity per unit of unit_density
     double precision, public :: fld_kappa = 1.d0
@@ -25,7 +25,7 @@ module mod_fld
     !> Indices of the radiation flux
     integer, allocatable, public, protected :: r_f(:)
 
-contains
+  contains
 
   subroutine fld_params_read(files)
     use mod_global_parameters, only: unitpar
@@ -93,13 +93,12 @@ contains
   end subroutine fld_init
 
   !> w[iw]=w[iw]+qdt*S[wCT,qtC,x] where S is the source based on wCT within ixO
-  subroutine fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x, &
-     energy,qsourcesplit,active)
+  subroutine fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
+       energy,qsourcesplit,active)
 
     use mod_constants
     use mod_global_parameters
     use mod_usr_methods
-    !use mod_variables
     !use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
 
     integer, intent(in)             :: ixI^L, ixO^L
@@ -117,34 +116,28 @@ contains
     double precision :: fld_ideal_gas = 8.314598d7 !fix units
     integer :: idir
 
+    print*, "qsourcesplit .eqv. fld_split", (qsourcesplit .eqv. fld_split)
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
-
-      print*,"====================================="
-
       do idir = 1,ndir
-        print*, idir , "before", w(5,5,iw_mom(idir))
-
+        print*, idir , "before", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
         ! Radiation force = kappa*rho/c *Flux
         radiation_force(ixI^S,idir) = 1. !fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_f(idir)) *unit_velocity/const_c
         ! Momentum equation source term
-        w(ixO^S,iw_mom(idir)) = w(ixO^S,iw_mom(idir)) &
-            + qdt * radiation_force(ixO^S,idir)
-
-        print*, idir , "after", w(5,5,iw_mom(idir))
-
+        w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
+            + qdt * radiation_force(ixI^S,idir)
+        print*, w(5,5,iw_mom(idir))
+        print*, idir , "after", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
       end do
 
       ! if(energy .and. .not.block%e_is_internal) then
       !   call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
       !   temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*unit_temperature
-      !
       !   ! Cooling = -4pi kappa rho B
       !   radiation_cooling(ixI^S) = 1. !fld_kappa*wCT(ixI^S,rho_)*4*fld_boltzman_cgs*temperature(ixI^S)**4
       !      !need stefan-boltzman
       !   ! Heating = c kappa rho E_rad
       !   radiation_heating(ixI^S) = 1. !fld_kappa*wCT(ixI^S,rho_)*wCT(ixI^S,r_e) *const_c/unit_velocity
-      !
       !   ! Energy equation source terms
       !   w(ixO^S,iw_e) = w(ixO^S,iw_e) &
       !      + qdt * radiation_heating(ixI^S) &
@@ -216,9 +209,9 @@ contains
   ! double precision :: normgrad2(ixI^S)
   ! integer :: idir
   !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! !!! CHECK USE OF iw_index instead of index. eg rho_ instead of rhiw_o !!!
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! !!! CHECK USE OF iw_index instead of index. eg rho_ instead of iw_rho !!!
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
   !
   ! !> Calculate R everywhere
@@ -242,7 +235,6 @@ contains
   !   w(ixO^S,r_f(idir)) = -const_c/unit_velocity*fld_lambda/(fld_kappa*wCT(ixI^S,rho_))&
   !     *grad_r_e(ixO^S)
   ! end do
-  !
   !
   ! end subroutine limit_flux
 

@@ -83,7 +83,10 @@ contains
     double precision, intent(inout) :: w(ixI^S,1:nw)
     integer :: ix1
 
-    do ix1 = ixImin1,ixImax1
+    print*, "####################################################################"
+    print*,"iB" , iB
+
+    do ix1 = 1,ixImin1
       w(ix1,ixImin2:ixImax2, rho_) =  1.
       w(ix1,ixImin2:ixImax2, mom(1)) = 0.5
       w(ix1,ixImin2:ixImax2, mom(2)) = 1.5

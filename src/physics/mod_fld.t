@@ -116,18 +116,18 @@ module mod_fld
     double precision :: fld_ideal_gas = 8.314598d7 !fix units
     integer :: idir
 
-    print*, "qsourcesplit .eqv. fld_split", (qsourcesplit .eqv. fld_split)
+    !print*, "qsourcesplit .eqv. fld_split", (qsourcesplit .eqv. fld_split)
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
       do idir = 1,ndir
-        print*, idir , "before", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
+        !print*, idir , "before", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
         ! Radiation force = kappa*rho/c *Flux
-        radiation_force(ixI^S,idir) = 1. !fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_f(idir)) *unit_velocity/const_c
+        radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_f(idir)) *unit_velocity/const_c
         ! Momentum equation source term
         w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
             + qdt * radiation_force(ixI^S,idir)
-        print*, w(5,5,iw_mom(idir))
-        print*, idir , "after", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
+        !print*, w(5,5,iw_mom(idir))
+        !print*, idir , "after", w(5,5,iw_mom(idir)), qsourcesplit, fld_split
       end do
 
       ! if(energy .and. .not.block%e_is_internal) then

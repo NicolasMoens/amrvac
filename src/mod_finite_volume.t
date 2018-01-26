@@ -223,10 +223,10 @@ contains
     if (.not.slab.and.idimmin==1) &
          call phys_add_source_geom(qdt,ixI^L,ixO^L,wCT,wnew,x)
 
-    print*, "CALLING addsource2 from finite_volume"
+    !print*, "CALLING addsource2 from finite_volume"
     call addsource2(qdt*dble(idimmax-idimmin+1)/dble(ndim), &
          ixI^L,ixO^L,1,nw,qtC,wCT,qt,wnew,x,.false.)
-    print*, "AFTER CALLING addsource2 from finite_volume", wnew(5,5,iw_mom(1))
+    !print*, "AFTER CALLING addsource2 from finite_volume", wnew(5,5,iw_mom(1))
 
     ! check and optionally correct unphysical values
     call phys_handle_small_values(.false.,wnew,x,ixI^L,ixO^L,'finite_volume')

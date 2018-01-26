@@ -210,9 +210,9 @@ contains
        if (it>=it_max .or. global_time>=time_max) exit time_evol
 
        ! solving equations
-       print*, "BEFORE CALLING advance"
+       !print*, "BEFORE CALLING advance"
        call advance(it)
-       print*, "AFTER CALLING advance"
+       !print*, "AFTER CALLING advance"
 
        ! if met unphysical values, output the last good status and stop the run
        call MPI_ALLREDUCE(crash,crashall,1,MPI_LOGICAL,MPI_LOR,icomm,ierrmpi)

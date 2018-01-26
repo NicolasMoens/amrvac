@@ -46,9 +46,9 @@ contains
           leveljump(i^D)=.false.
        end if
        {end do\}
-       print*,"BEFORE CALLING addsource1_grid", pw(igrid)%w(5,5,iw_mom(1))
+       !print*, BEFORE CALLING addsource1_grid", pw(igrid)%w(5,5,iw_mom(1))
        call addsource1_grid(igrid,qdt,qt,pw(igrid)%w,src_active)
-       print*,"AFTER CALLING addsource1_grid", pw(igrid)%w(5,5,iw_mom(1))
+       !print*, AFTER CALLING addsource1_grid", pw(igrid)%w(5,5,iw_mom(1))
     end do
     !$OMP END PARALLEL DO
 
@@ -82,11 +82,11 @@ contains
        call addsource2(qdt  ,ixG^LL,ixM^LL,1,nw,qt,w1,qt,w,&
             pw(igrid)%x,.true.,src_active)
     case ('sfs')
-       print*,"===============================================================", it
-       print*, "CALLING addsource2 from addsource1_grid", w(5,5,iw_mom(1)), "active", src_active
+       !print*, ===============================================================", it
+       !print*, "CALLING addsource2 from addsource1_grid", w(5,5,iw_mom(1)), "active", src_active
        call addsource2(qdt/2,ixG^LL,ixM^LL,1,nw,qt,w1,qt,w,&
        pw(igrid)%x,.true.,src_active)
-       print*, "AFTER CALLING addsource2 from addsource1_grid", w(5,5,iw_mom(1)), "active", src_active
+       !print*, "AFTER CALLING addsource2 from addsource1_grid", w(5,5,iw_mom(1)), "active", src_active
     case ('ssf')
        call addsource2(qdt/2,ixG^LL,ixG^LL,1,nw,qt,w,qt,w1,&
             pw(igrid)%x,.true.,src_active)
@@ -131,9 +131,9 @@ contains
 
     ! physics defined sources, typically explicitly added,
     ! along with geometrical source additions
-    print*, "CALLING PHYS_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, tmp_active
+    !print*, "CALLING PHYS_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, tmp_active
     call phys_add_source(qdt,ixI^L,ixO^L,wCT,w,x,qsourcesplit,tmp_active)
-    print*, "AFTER CALLING PHYS_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, tmp_active
+    !print*, "AFTER CALLING PHYS_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, tmp_active
     if (present(src_active)) src_active = src_active .or. tmp_active
   end subroutine addsource2
 

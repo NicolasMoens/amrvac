@@ -151,16 +151,16 @@ if (any(typeboundary(1:nwflux,iB)=="character")) then
      end if \}
   end select
   if(ixGmax1==ixGhi1) then
-    call identifyphysbound(saveigrid,isphysbound,iib^D)   
+    call identifyphysbound(saveigrid,isphysbound,iib^D)
     if(iib1==-1.and.iib2==-1) then
-      do ix2=nghostcells,1,-1 
-        do ix1=nghostcells,1,-1 
+      do ix2=nghostcells,1,-1
+        do ix1=nghostcells,1,-1
           w(ix^D,1:nwflux)=(w(ix1+1,ix2+1,1:nwflux)+w(ix1+1,ix2,1:nwflux)+w(ix1,ix2+1,1:nwflux))/3.d0
         end do
       end do
     end if
     if(iib1== 1.and.iib2==-1) then
-      do ix2=nghostcells,1,-1 
+      do ix2=nghostcells,1,-1
         do ix1=ixMmax1+1,ixGmax1
           w(ix^D,1:nwflux)=(w(ix1-1,ix2+1,1:nwflux)+w(ix1-1,ix2,1:nwflux)+w(ix1,ix2+1,1:nwflux))/3.d0
         end do
@@ -168,7 +168,7 @@ if (any(typeboundary(1:nwflux,iB)=="character")) then
     end if
     if(iib1==-1.and.iib2== 1) then
       do ix2=ixMmax2+1,ixGmax2
-        do ix1=nghostcells,1,-1 
+        do ix1=nghostcells,1,-1
           w(ix^D,1:nwflux)=(w(ix1+1,ix2-1,1:nwflux)+w(ix1+1,ix2,1:nwflux)+w(ix1,ix2-1,1:nwflux))/3.d0
         end do
       end do

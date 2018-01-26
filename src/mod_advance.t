@@ -37,9 +37,9 @@ contains
     }
 
     ! split source addition
-    print*, "BEFORE add_split_source(prior=.true.)", pw(igrid)%w(5,5,iw_mom(1))
+    !print*, "BEFORE add_split_source(prior=.true.)", pw(igrid)%w(5,5,iw_mom(1))
     call add_split_source(prior=.true.)
-    print*, "BEFORE add_split_source(prior=.true.)", pw(igrid)%w(5,5,iw_mom(1))
+    !print*, "BEFORE add_split_source(prior=.true.)", pw(igrid)%w(5,5,iw_mom(1))
 
     firstsweep=.true.
     if (dimsplit) then
@@ -60,15 +60,15 @@ contains
     else
        ! Add fluxes from all directions at once
        lastsweep= .true.
-       print*,"BEFORE CALLING advect", pw(igrid)%w(5,5,iw_mom(1))
+       !print*, BEFORE CALLING advect", pw(igrid)%w(5,5,iw_mom(1))
        call advect(1,ndim)
-       print*,"AFTER CALLING advect", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
+       !print*, AFTER CALLING advect", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
     end if
 
     ! split source addition
-    print*, "BEFORE add_split_source(prior=.false.)"
+    !print*, "BEFORE add_split_source(prior=.false.)"
     call add_split_source(prior=.false.)
-    print*, "AFTER add_split_source(prior=.false.)"
+    !print*, "AFTER add_split_source(prior=.false.)"
 
     if(use_particles) call handle_particles
 
@@ -97,9 +97,9 @@ contains
 
     select case (time_integrator)
     case ("onestep")
-       print*, "BEFORE CALLING advect1", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
+       !print*, "BEFORE CALLING advect1", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
        call advect1(flux_scheme,one,idim^LIM,global_time,1,global_time,0)
-       print*, "AFTER CALLING advect1", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
+       !print*, "AFTER CALLING advect1", pw(igrid)%w(5,5,iw_mom(1)), pw(igrid)%w1(5,5,iw_mom(1))
 
     case ("twostep")
       ! predictor step
@@ -371,13 +371,13 @@ contains
          pw(igrid)%wb=>pw(igrid)%w4
        end select
 
-       print*, "BEFORE CALLING process1_grid from advect1", pw(igrid)%wb(5,5,iw_mom(1)), pw(igrid)%wa(5,5,iw_mom(1))
+       !print*, "BEFORE CALLING process1_grid from advect1", pw(igrid)%wb(5,5,iw_mom(1)), pw(igrid)%wa(5,5,iw_mom(1))
        call process1_grid(method(level),igrid,qdt,ixG^LL,idim^LIM,qtC,&
             pw(igrid)%wa,qt,pw(igrid)%wb,pw(igrid)%wold)
-       print*, "AFTER CALLING process1_grid from advect1", pw(igrid)%wb(5,5,iw_mom(1)), pw(igrid)%wa(5,5,iw_mom(1))
+       !print*, "AFTER CALLING process1_grid from advect1", pw(igrid)%wb(5,5,iw_mom(1)), pw(igrid)%wa(5,5,iw_mom(1))
 
-       print*, "------------------a---------------", a, pw(igrid)%wa(5,5,iw_mom(1))
-       print*, "------------------b---------------", b, pw(igrid)%wb(5,5,iw_mom(1))
+       !print*, "------------------a---------------", a, pw(igrid)%wa(5,5,iw_mom(1))
+       !print*, "------------------b---------------", b, pw(igrid)%wb(5,5,iw_mom(1))
 
     end do
     !$OMP END PARALLEL DO
@@ -420,10 +420,10 @@ contains
 
     fC=0.d0
 
-    print*, "BEFORE CALLING advect1_grid from process1_grid", w(5,5,iw_mom(1))
+    !print*, "BEFORE CALLING advect1_grid from process1_grid", w(5,5,iw_mom(1))
     call advect1_grid(method,qdt,ixG^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D, &
          pw(igrid)%x)
-    print*, "AFTER CALLING advect1_grid from process1_grid", w(5,5,iw_mom(1))
+    !print*, "AFTER CALLING advect1_grid from process1_grid", w(5,5,iw_mom(1))
 
     ! opedit: Obviously, flux is stored only for active grids.
     ! but we know in fix_conserve wether there is a passive neighbor
@@ -467,14 +467,14 @@ contains
     case ('fd')
        call fd(method,qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D,x)
     case ('tvdmu','tvdlf','hll','hllc','hllcd','hlld')
-       print*, "BEFORE CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
+       !print*, "BEFORE CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
        call finite_volume(method,qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D,x)
-       print*, "AFTER CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
+       !print*, "AFTER CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
     case ('tvd')
        call centdiff(qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,fC,dx^D,x)
        call tvdlimit(method,qdt,ixI^L,ixO^L,idim^LIM,wCT,qt+qdt,w,fC,dx^D,x)
     case ('source')
-       print*, "CALLING addsource2 from mod_advance"
+       !print*, "CALLING addsource2 from mod_advance"
        call addsource2(qdt*dble(idimmax-idimmin+1)/dble(ndim),&
             ixI^L,ixO^L,1,nw,qtC,wCT,qt,w,x,.false.)
     case ('nul')

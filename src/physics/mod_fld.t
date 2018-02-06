@@ -15,15 +15,13 @@ module mod_fld
     !> Index of the radiation energy density
     integer, protected :: iw_r_e = -1
 
-    !> NICOLAS MOENS
-    !> Indices of the radiation flux density
-    integer, allocatable, protected :: iw_r_f(:)
-
     !> Index of the radiation energy
     integer, public, protected              :: r_e
 
-    !> Indices of the radiation flux
-    integer, allocatable, public, protected :: r_f(:)
+    !> public methods
+    public :: fld_get_flux
+    public :: fld_add_source
+    public :: fld_get_radflux
 
   contains
 
@@ -44,39 +42,16 @@ module mod_fld
   !> Set radiation energy variable
   function var_set_radiation_energy() result(iw)
     use mod_variables
-
     integer :: iw
 
     nwflux              = nwflux + 1
     nwfluxbc            = nwfluxbc + 1
     nw                  = nw + 1
-    iw_r_e            = nwflux
+    iw_r_e              = nwflux
     iw                  = nwflux
     cons_wnames(nwflux) = 'r_e'
     prim_wnames(nwflux) = 'r_e'
   end function var_set_radiation_energy
-
-  !> Set radiation_flux variables
-  function var_set_radiation_flux(ndir) result(iw)
-    use mod_variables
-
-    integer, intent(in) :: ndir
-    integer             :: iw(ndir), idir
-
-    if (allocated(iw_r_f)) &
-         call mpistop("Error: set_rad_flux was already called")
-    allocate(iw_r_f(ndir))
-
-    do idir = 1, ndir
-      nwflux       = nwflux + 1
-      nwfluxbc     = nwfluxbc + 1
-      nw           = nw + 1
-      iw_r_f(idir) = nwflux
-      iw(idir)     = nwflux
-      write(cons_wnames(nwflux),"(A3,I1)") "r_f", idir
-      write(prim_wnames(nwflux),"(A3,I1)") "r_f", idir
-    end do
-  end function var_set_radiation_flux
 
   subroutine fld_init()
 
@@ -86,10 +61,12 @@ module mod_fld
     !> read par files
     call fld_params_read(par_files)
 
-    !> set radiation flux and energy mod_variables
+    !> Make kappa dimensionless
+    fld_kappa = fld_kappa*unit_length*unit_density
+
+    !> set radiation energy mod_variables
     r_e = var_set_radiation_energy()
-    allocate(r_f(ndir))
-    r_f(:) = var_set_radiation_flux(ndir)
+
   end subroutine fld_init
 
   !> w[iw]=w[iw]+qdt*S[wCT,qtC,x] where S is the source based on wCT within ixO
@@ -118,12 +95,9 @@ module mod_fld
     double precision :: radiation_heating(ixI^S)
     double precision :: photon_tiring(ixI^S)
 
-    double precision :: fld_boltzman_cgs = 5.67036713d-8 !fix units !AREN'T THESE csts KNOWN ANYWHERE ELSE?
-    double precision :: fld_ideal_gas = 8.314598d7 !fix units
-
+    double precision :: fld_boltzman_cgs = 5.67036713d-8 !*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !fix units !AREN'T THESE csts KNOWN ANYWHERE ELSE?
     integer :: idir
 
-    !print*, "qsourcesplit .eqv. fld_split", (qsourcesplit .eqv. fld_split)
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
 
@@ -132,8 +106,6 @@ module mod_fld
 
       do idir = 1,ndir
         !> Radiation force = kappa*rho/c *Flux
-
-        !radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_f(idir)) *unit_velocity/const_c
         radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)*rad_flux(ixI^S, idir) *unit_velocity/const_c
 
         !> Momentum equation source term
@@ -143,12 +115,13 @@ module mod_fld
 
       if(energy .and. .not.block%e_is_internal) then
         call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
-        temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*unit_temperature
-        !> Cooling = -4pi kappa rho B
-        radiation_cooling(ixI^S) = 1. !fld_kappa*wCT(ixI^S,rho_)*4*fld_boltzman_cgs*temperature(ixI^S)**4
-        !need stefan-boltzman
+        temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))!*unit_temperature
+        !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
+        radiation_cooling(ixI^S) = 4+fld_kappa*wCT(ixI^S,iw_rho)&
+        *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
         !> Heating = c kappa rho E_rad
-        radiation_heating(ixI^S) = 1. !fld_kappa*wCT(ixI^S,rho_)*wCT(ixI^S,r_e) *const_c/unit_velocity
+        radiation_heating(ixI^S) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_e) *const_c/unit_velocity
+        
         !> Energy equation source terms
         w(ixO^S,iw_e) = w(ixO^S,iw_e) &
            + qdt * radiation_heating(ixI^S) &
@@ -161,14 +134,20 @@ module mod_fld
 
       !> Radiation Energy source term
       w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-         - qdt * photon_tiring(ixI^S)
+         - qdt * photon_tiring(ixI^S) &
+         - qdt * radiation_heating(ixI^S) &
+         + qdt * radiation_cooling(ixI^S)
 
-
+    print*, 'radiation force', radiation_force(5,5,:)
+    print*, 'cooling', radiation_cooling(5,5)
+    print*, 'heating', radiation_heating(5,5)
+    print*, 'photon tiring', photon_tiring(5,5)
 
     end if
   end subroutine fld_add_source
 
   !> Calculate Radiation Flux
+  !> Returns Radiation flux and radiation pressure
   subroutine fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
     use mod_global_parameters
     !use geometry, only: gradient
@@ -201,24 +180,10 @@ module mod_fld
     end do
 
     !> Calculate radiation pressure
-    !> (l + l^2 R^2)*E
+    !> P = (lamb + lamb^2 R^2)*E
     rad_pressure(ixI^S) = (fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2) * w(ixI^S, iw_r_e)
 
   end subroutine fld_get_radflux
-
-  ! subroutine fld_get_radpressure(w, x, ixI^L, ixO^L, rad_pressure)
-  !   use mod_global_parameters
-  !   !use geometry, only: gradient
-  !
-  !   integer, intent(in)          :: ixI^L, ixO^L
-  !   double precision, intent(in) :: w(ixI^S, nw)
-  !   double precision, intent(in) :: x(ixI^S, 1:ndim)
-  !   double precision, intent(out):: rad_flux(ixI^S, 1:ndim)
-  !   double precision :: grad_r_e(ixI^S, 1:ndim)
-  !   integer :: idir
-  !
-  ! end subroutine fld_get_radpressure
-
 
   ! Calculate flux f_idim[iw]
   subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
@@ -233,78 +198,13 @@ module mod_fld
     double precision, intent(out)   :: f(ixI^S, nwflux)
     integer                         :: idir
 
-    ! Radiation energy is v_i*r_e
-    f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e)
+    double precision :: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
+    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+
+    !> Radiation energy is v_i*r_e   (??+ F_i??)
+    f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e) + rad_flux(ixO^S,idim)
 
   end subroutine fld_get_flux
-
-  ! subroutine fld_adv_radparam(qdt,ixI^L,ixO^L,wCT,w,x,)
-  !
-  !   use mod_global_parameters
-  !   use mod_usr_methods
-  !
-  !   integer, intent(in)             :: ixI^L, ixO^L
-  !   double precision, intent(in)    :: qdt, x(ixI^S,1:ndim)
-  !   double precision, intent(in)    :: wCT(ixI^S,1:nw)
-  !   double precision, intent(inout) :: w(ixI^S,1:nw)
-  !
-  !   double precision :: lambda(ixI^S,1:ndim)
-  !
-  !   ! calculate flux limiter
-  !   lambda = ...
-  !   ! radiation flux
-  !   r_f = ... (lambda, grad of r_e)
-  !   ! radiation energy
-  !   r_e = r_e + div of r_f or something similar
-  !
-  ! end subroutine fld_adv_radparam
-
-
-  ! subroutine limit_flux(qdt,ixI^L,ixO^L,wCT,w,x)
-  !
-  ! use mod_global_parameters
-  ! !use geometry, only: gradient
-  !
-  ! integer, intent(in)             :: ixI^L, ixO^L
-  ! double precision, intent(in)    :: qdt, x(ixI^S,1:ndim)
-  ! double precision, intent(in)    :: wCT(ixI^S,1:nw)
-  ! double precision, intent(inout) :: w(ixI^S,1:nw)
-  !
-  ! double precision :: fld_R(ixI^S)
-  ! double precision :: fld_lambda(ixI^S)
-  ! double precision :: radiation_energy(ixI^S)
-  ! double precision :: grad_r_e(ixI^S)
-  ! double precision :: normgrad2(ixI^S)
-  ! integer :: idir
-  !
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! !!! CHECK USE OF iw_index instead of index. eg rho_ instead of iw_rho !!!
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !
-  !
-  ! !> Calculate R everywhere
-  ! ! |grad E|/(rho kappa E)
-  ! normgrad2(ixI^S) = 0
-  ! do idir = 1,ndir
-  !   call gradient(radiation_energy,ixI^L,ixO^L,idir,grad_r_e) !! IS ixO^L correct as argument for gradient?!?!?!?!
-  !   normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S)**2
-  ! end do
-  !
-  ! fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,rho_)*w(ixI^S,r_e))
-  !
-  ! !> Calculate lambda
-  ! !> Levermore and Pomraning
-  ! fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
-  ! radiation_energy(ixO^S) =  w(ixO^S, r_e)
-  !
-  ! !> Calculate the Flux using the fld closure relation
-  ! do idir = 1,ndir
-  !   call gradient(radiation_energy,ixI^L,ixO^L,idir,grad_r_e) !! IS ixO^L correct as argument for gradient?!?!?!?!
-  !   w(ixO^S,r_f(idir)) = -const_c/unit_velocity*fld_lambda/(fld_kappa*wCT(ixI^S,rho_))&
-  !     *grad_r_e(ixO^S)
-  ! end do
-  !
-  ! end subroutine limit_flux
 
   ! subroutine alternating_direction(w,ixI^L,ixO^L,dtnew,dx^D,x)
   !   use mod_global_parameters

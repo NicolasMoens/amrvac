@@ -612,6 +612,7 @@ contains
   subroutine hd_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux_prim
+    use mod_fld, only: fld_get_flux
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
     ! conservative w
@@ -650,6 +651,10 @@ contains
     ! Dust fluxes
     if (hd_dust) then
       call dust_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
+    end if
+
+    if (hd_fld) then
+      call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     end if
 
   end subroutine hd_get_flux

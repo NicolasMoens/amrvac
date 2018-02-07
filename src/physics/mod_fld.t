@@ -114,14 +114,17 @@ module mod_fld
       end do
 
       if(energy .and. .not.block%e_is_internal) then
+        !> calc Temperature as p/rho * (m_h*mu)/k
         call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
-        temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))!*unit_temperature
+        temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
+        *unit_length**2/(unit_time**2 * unit_temperature)
+
         !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
-        radiation_cooling(ixI^S) = 4+fld_kappa*wCT(ixI^S,iw_rho)&
+        radiation_cooling(ixI^S) = 4*fld_kappa*wCT(ixI^S,iw_rho)&
         *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
         !> Heating = c kappa rho E_rad
         radiation_heating(ixI^S) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_e) *const_c/unit_velocity
-        
+
         !> Energy equation source terms
         w(ixO^S,iw_e) = w(ixO^S,iw_e) &
            + qdt * radiation_heating(ixI^S) &
@@ -138,10 +141,17 @@ module mod_fld
          - qdt * radiation_heating(ixI^S) &
          + qdt * radiation_cooling(ixI^S)
 
+    print*, 'unit_time', unit_time
+    print*, 'unit_temperature', unit_temperature
+    print*, 'unit_length', unit_length
+    print*, 'unit_density', unit_density
+    print*, '================================================================'
+
     print*, 'radiation force', radiation_force(5,5,:)
-    print*, 'cooling', radiation_cooling(5,5)
-    print*, 'heating', radiation_heating(5,5)
+    print*, 'cooling', radiation_cooling(5,5),'heating', radiation_heating(5,5)
+    print*, 'heating/cooling', radiation_heating(5,5)/radiation_cooling(5,5)
     print*, 'photon tiring', photon_tiring(5,5)
+    print*, '================================================================'
 
     end if
   end subroutine fld_add_source
@@ -170,17 +180,18 @@ module mod_fld
     fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
 
     !> Calculate the flux limiter, lambda
-    !> Levermore and Pomraning
+    !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
     fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
     ! use two instead of 2??? 3 three 6 six
 
     !> Calculate the Flux using the fld closure relation
+    !> F = -c*lambda/(kappa*rho) *grad E
     do idir = 1,ndir
       rad_flux(ixI^S, idir) = -const_c/unit_velocity*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho)) *grad_r_e(ixI^S,idir)
     end do
 
     !> Calculate radiation pressure
-    !> P = (lamb + lamb^2 R^2)*E
+    !> P = (lambda + lambda^2 R^2)*E
     rad_pressure(ixI^S) = (fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2) * w(ixI^S, iw_r_e)
 
   end subroutine fld_get_radflux
@@ -226,40 +237,5 @@ module mod_fld
   !   ! output should be placed in radiation_energy
   !
   ! end subroutine alternating_direction
-
-
-  ! subroutine fld_get_superdt(w,ixI^L,ixO^L,dtnew,dx^D,x)
-  !   ! Check diffusion time limit dt < tc_dtpar * dx_i**2 / ((gamma-1)*tc_k_para_i/rho)
-  !   use mod_global_parameters
-  !   use mod_physics
-  !
-  !   integer, intent(in) :: ixI^L, ixO^L
-  !   double precision, intent(in) :: dx^D, x(ixI^S,1:ndim)
-  !   double precision, intent(inout) :: w(ixI^S,1:nw), dtnew
-  !
-  !   double precision :: dxinv(1:ndim)
-  !   double precision :: dtdiff_fld,dtdiff_fldsat
-  !   integer          :: idim,ix^D
-  !
-  !   ^D&dxinv(^D)=one/dx^D;
-  !
-  !
-  !
-  !   do idim=1,ndim
-  !      ! dt< tc_dtpar * dx_idim**2/((gamma-1)*tc_k_para_idim/rho)
-  !      dtdiff_tcond=tc_dtpar/maxval(tmp(ixO^S)*dxinv(idim)**2)
-  !      if(tc_saturate) then
-  !        ! dt< tc_dtpar* dx_idim**2/((gamma-1)*sqrt(Te)*5*phi)
-  !        dtdiff_tsat=tc_dtpar/maxval((tc_gamma-1.d0)*dsqrt(Te(ixO^S))*&
-  !                    5.d0*dxinv(idim)**2)
-  !        ! choose the slower flux (bigger time scale) between classic and saturated
-  !        dtdiff_tcond=max(dtdiff_fld,dtdiff_fldsat)
-  !      end if
-  !      ! limit the time step
-  !      dtnew=min(dtnew,dtdiff_fld)
-  !   end do
-  !   dtnew=dtnew/dble(ndim)
-  !
-  ! end subroutine fld_get_superdt
 
 end module mod_fld

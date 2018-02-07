@@ -612,7 +612,7 @@ contains
   subroutine hd_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux_prim
-    use mod_fld, only: fld_get_flux
+    use mod_fld, only: fld_get_flux !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
     ! conservative w
@@ -653,6 +653,8 @@ contains
       call dust_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
     end if
 
+    !> NICOLAS MOENS
+    ! fld fluxes
     if (hd_fld) then
       call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     end if

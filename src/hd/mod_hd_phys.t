@@ -60,6 +60,7 @@ module mod_hd_phys
   logical, public, protected              :: hd_fld = .true.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!    DEFAULT SHOULD BE .false., FIND WORKAROUND !!     !!!
+  !!! Problem with boundry cond. being defined before wr_e !!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -606,6 +607,12 @@ contains
       call dust_get_flux(w, x, ixI^L, ixO^L, idim, f)
     end if
 
+    !> NICOLAS MOENS
+    ! fld fluxes
+    if (hd_fld) then
+      call fld_get_flux_cons(w, w, x, ixI^L, ixO^L, idim, f)
+    end if
+
   end subroutine hd_get_flux_cons
 
   ! Calculate flux f_idim[iw]
@@ -787,6 +794,7 @@ contains
     use mod_radiative_cooling, only: cooling_get_dt
     use mod_viscosity, only: viscosity_get_dt
     use mod_gravity, only: gravity_get_dt
+    use mod_fld, only: fld_get_dt !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: dx^D, x(ixI^S, 1:^ND)
@@ -809,6 +817,11 @@ contains
 
     if(hd_gravity) then
       call gravity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
+    end if
+
+    !> NICOLAS MOENS
+    if(hd_fld) then
+      call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
 
   end subroutine hd_get_dt

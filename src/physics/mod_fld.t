@@ -16,12 +16,14 @@ module mod_fld
     integer, protected :: iw_r_e = -1
 
     !> Index of the radiation energy
-    integer, public, protected              :: r_e
+    integer, public, protected :: r_e
 
     !> public methods
-    public :: fld_get_flux
     public :: fld_add_source
     public :: fld_get_radflux
+    public :: fld_get_flux
+    public :: fld_get_flux_cons
+    public :: fld_get_dt
 
   contains
 
@@ -114,13 +116,14 @@ module mod_fld
       end do
 
       if(energy .and. .not.block%e_is_internal) then
+
         !> calc Temperature as p/rho * (m_h*mu)/k
         call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
-        temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
+        temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
         *unit_length**2/(unit_time**2 * unit_temperature)
 
         !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
-        radiation_cooling(ixI^S) = 4*fld_kappa*wCT(ixI^S,iw_rho)&
+        radiation_cooling(ixI^S) = 4*fld_kappa*wCT(ixI^S,iw_rho)*temperature(ixI^S)&
         *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
         !> Heating = c kappa rho E_rad
         radiation_heating(ixI^S) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_e) *const_c/unit_velocity
@@ -129,6 +132,7 @@ module mod_fld
         w(ixO^S,iw_e) = w(ixO^S,iw_e) &
            + qdt * radiation_heating(ixI^S) &
            - qdt * radiation_cooling(ixI^S)
+
       end if
 
       !> Photon tiring
@@ -141,19 +145,8 @@ module mod_fld
          - qdt * radiation_heating(ixI^S) &
          + qdt * radiation_cooling(ixI^S)
 
-    print*, 'unit_time', unit_time
-    print*, 'unit_temperature', unit_temperature
-    print*, 'unit_length', unit_length
-    print*, 'unit_density', unit_density
-    print*, '================================================================'
-
-    print*, 'radiation force', radiation_force(5,5,:)
-    print*, 'cooling', radiation_cooling(5,5),'heating', radiation_heating(5,5)
-    print*, 'heating/cooling', radiation_heating(5,5)/radiation_cooling(5,5)
-    print*, 'photon tiring', photon_tiring(5,5)
-    print*, '================================================================'
-
     end if
+
   end subroutine fld_add_source
 
   !> Calculate Radiation Flux
@@ -196,6 +189,26 @@ module mod_fld
 
   end subroutine fld_get_radflux
 
+
+  subroutine fld_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
+    use mod_global_parameters
+
+    integer, intent(in)             :: ixI^L, ixO^L, idim
+    double precision, intent(in)    :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+    double precision, intent(out)   :: f(ixI^S, nwflux)
+    double precision                :: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
+    double precision                :: v(ixI^S)
+    integer                         :: idir, itr
+
+    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+    v(ixO^S) = w(ixO^S, iw_mom(idim)) / w(ixO^S, iw_rho)
+
+    !> Radiation energy is v_i*r_e   (??+ F_i??)
+    f(ixO^S, r_e) = v * w(ixO^S, r_e) + rad_flux(ixO^S,idim)
+
+  end subroutine fld_get_flux_cons
+
+
   ! Calculate flux f_idim[iw]
   subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
@@ -210,12 +223,93 @@ module mod_fld
     integer                         :: idir
 
     double precision :: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
-    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+    call fld_get_radflux(wC, x, ixI^L, ixO^L, rad_flux, rad_pressure)
 
     !> Radiation energy is v_i*r_e   (??+ F_i??)
-    f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e) + rad_flux(ixO^S,idim)
+    f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e) + rad_flux(ixO^S,idim)*w(ixO^S,iw_rho) !Do I need rho, if so w or wC
+    !print*, f
 
   end subroutine fld_get_flux
+
+
+  subroutine fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
+    use mod_constants
+    use mod_global_parameters
+    use mod_usr_methods
+    use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
+
+    integer, intent(in)             :: ixI^L, ixO^L
+    double precision, intent(in) :: dx^D
+    double precision, intent(in) :: x(ixI^S,1:ndim)
+    double precision, intent(in) :: w(ixI^S,1:nw)
+    double precision, intent(out) :: dtnew
+    double precision :: dxinv(ixI^S,1:ndim)
+
+    double precision :: temperature(ixI^S)
+    double precision :: rad_flux(ixI^S,1:ndim)
+    double precision :: rad_pressure(ixI^S)
+    double precision :: div_v(ixI^S)
+
+    double precision :: radiation_force(ixI^S,1:ndim)
+    double precision :: radiation_cooling(ixI^S)
+    double precision :: radiation_heating(ixI^S)
+    double precision :: photon_tiring(ixI^S)
+
+    double precision :: fld_boltzman_cgs = 5.67036713d-8 !*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !fix units !AREN'T THESE csts KNOWN ANYWHERE ELSE?
+    integer :: idir
+
+    !> Calculate the radiative flux using the FLD Approximation
+    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+
+    do idir = 1,ndir
+      !> Radiation force = kappa*rho/c *Flux
+      radiation_force(ixI^S,idir) = fld_kappa*w(ixI^S,iw_rho)*rad_flux(ixI^S, idir) *unit_velocity/const_c
+    end do
+
+    !> calc Temperature as p/rho * (m_h*mu)/k
+    call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
+    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
+    *unit_length**2/(unit_time**2 * unit_temperature)
+
+    !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
+    radiation_cooling(ixI^S) = 4*fld_kappa*w(ixI^S,iw_rho)*temperature(ixI^S)&
+    *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
+    !> Heating = c kappa rho E_rad
+    radiation_heating(ixI^S) = fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e) *const_c/unit_velocity
+
+    !> Photon tiring
+    call divvector(w(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
+    photon_tiring(ixI^S) = div_v(ixI^S)/rad_pressure(ixI^S)
+
+    !> New dt based on radiation_force
+    do idir = 1,ndir
+      if (minval(sqrt(w(ixI^S,iw_rho)/radiation_force(ixI^S,idir)*dxinv(ixI^S,idir))) > zero) then
+        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_rho)/radiation_force(ixI^S,idir)*dxinv(ixI^S,idir)))) !chuck in the density somwhere?
+      end if
+    end do
+
+    ! !> New dt based on cooling term
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !   end if
+    ! end do
+    !
+    ! !> New dt based on heating term
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !   end if
+    ! end do
+    !
+    ! !> New dt based on photon tiring
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !   end if
+    ! end do
+
+  end subroutine fld_get_dt
 
   ! subroutine alternating_direction(w,ixI^L,ixO^L,dtnew,dx^D,x)
   !   use mod_global_parameters

@@ -1,0 +1,59 @@
+&filelist
+  base_filename = './data/stellar_wind'
+  autoconvert = T
+  convert_type = 'vtuBmpi'
+  saveprim = T
+/
+
+&savelist
+  itsave(1,1) = 0
+  itsave(1,2) = 0
+  tsave(3,5) = 0
+  ditsave(5) = 1
+  !dtsave_dat = 2.d-4
+  ditsave_log = 100
+/
+
+&stoplist
+  time_max = 8.0d5
+  dtmin = 1.0d-5
+  !it_max = 200000
+  !it_max= 200000
+/
+
+&methodlist
+  time_integrator = 'twostep'
+  flux_scheme = 'hll'
+  !flux_scheme = 'TVD'
+  !limiter = 'cada3'
+/
+
+&boundlist
+  nghostcells   = 2
+  typeboundary_min1 = 2*'special'
+  typeboundary_max1 = 2*'cont'
+/
+
+&meshlist
+  refine_max_level = 1
+  refine_criterion = 1
+  block_nx1 = 4000
+  domain_nx1 = 4000
+  !xprobmin1 = 1.d12
+  !xprobmax1 = 1.d13
+  xprobmin1 = 1.39d12
+  xprobmax1 = 1.39d13 
+/
+
+&paramlist
+  !slowsteps = 1000
+  courantpar = 0.6d0
+  !dtpar = 1.d2
+/
+
+&hd_list
+!  hd_gravity = .true.
+  hd_energy = .false.
+  hd_adiab = 5.29e12
+  hd_gamma = 1.
+/

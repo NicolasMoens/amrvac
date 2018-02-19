@@ -574,6 +574,7 @@ contains
   subroutine hd_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux
+    use mod_fld, only: fld_get_flux_cons
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
     double precision, intent(in)    :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
@@ -610,7 +611,7 @@ contains
     !> NICOLAS MOENS
     ! fld fluxes
     if (hd_fld) then
-      call fld_get_flux_cons(w, w, x, ixI^L, ixO^L, idim, f)
+      call fld_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
     end if
 
   end subroutine hd_get_flux_cons
@@ -619,7 +620,7 @@ contains
   subroutine hd_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux_prim
-    use mod_fld, only: fld_get_flux !> NICOLAS MOENS
+    !use mod_fld, only: fld_get_flux !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
     ! conservative w
@@ -662,9 +663,9 @@ contains
 
     !> NICOLAS MOENS
     ! fld fluxes
-    if (hd_fld) then
-      call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
-    end if
+    ! if (hd_fld) then
+    !   call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
+    ! end if
 
   end subroutine hd_get_flux
 
@@ -820,9 +821,11 @@ contains
     end if
 
     !> NICOLAS MOENS
-    if(hd_fld) then
-      call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
-    end if
+    ! print*,'old dt', dtnew
+    ! if(hd_fld) then
+    !   call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
+    ! end if
+    ! print*,'new dt', dtnew
 
   end subroutine hd_get_dt
 

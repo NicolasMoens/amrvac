@@ -21,7 +21,7 @@ module mod_fld
     !> public methods
     public :: fld_add_source
     public :: fld_get_radflux
-    public :: fld_get_flux
+    !public :: fld_get_flux
     public :: fld_get_flux_cons
     public :: fld_get_dt
 
@@ -209,27 +209,27 @@ module mod_fld
   end subroutine fld_get_flux_cons
 
 
-  ! Calculate flux f_idim[iw]
-  subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
-    use mod_global_parameters
-
-    integer, intent(in)             :: ixI^L, ixO^L, idim
-    ! conservative w
-    double precision, intent(in)    :: wC(ixI^S, 1:nw)
-    ! primitive w
-    double precision, intent(in)    :: w(ixI^S, 1:nw)
-    double precision, intent(in)    :: x(ixI^S, 1:ndim)
-    double precision, intent(out)   :: f(ixI^S, nwflux)
-    integer                         :: idir
-
-    double precision :: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
-    call fld_get_radflux(wC, x, ixI^L, ixO^L, rad_flux, rad_pressure)
-
-    !> Radiation energy is v_i*r_e   (??+ F_i??)
-    f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e) + rad_flux(ixO^S,idim)*w(ixO^S,iw_rho) !Do I need rho, if so w or wC
-    !print*, f
-
-  end subroutine fld_get_flux
+  ! ! Calculate flux f_idim[iw]
+  ! subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in)             :: ixI^L, ixO^L, idim
+  !   ! conservative w
+  !   double precision, intent(in)    :: wC(ixI^S, 1:nw)
+  !   ! primitive w
+  !   double precision, intent(in)    :: w(ixI^S, 1:nw)
+  !   double precision, intent(in)    :: x(ixI^S, 1:ndim)
+  !   double precision, intent(out)   :: f(ixI^S, nwflux)
+  !   integer                         :: idir
+  !
+  !   double precision :: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
+  !   call fld_get_radflux(wC, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+  !
+  !   !> Radiation energy is v_i*r_e   (??+ F_i??)
+  !   f(ixO^S, r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, r_e) + rad_flux(ixO^S,idim)*w(ixO^S,iw_rho) !Do I need rho, if so w or wC
+  !   !print*, f
+  !
+  ! end subroutine fld_get_flux
 
 
   subroutine fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
@@ -285,29 +285,36 @@ module mod_fld
     do idir = 1,ndir
       if (minval(sqrt(w(ixI^S,iw_rho)/radiation_force(ixI^S,idir)*dxinv(ixI^S,idir))) > zero) then
         dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_rho)/radiation_force(ixI^S,idir)*dxinv(ixI^S,idir)))) !chuck in the density somwhere?
+        print*, 'radiation_force dt', &
+        minval(sqrt(w(ixI^S,iw_rho)/&
+        radiation_force(ixI^S,idir)*&
+        dxinv(ixI^S,idir)))
       end if
     end do
 
-    ! !> New dt based on cooling term
-    ! do idir = 1,ndir
-    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir))) > zero) then
-    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))) !chuck in the density somwhere?
-    !   end if
-    ! end do
-    !
-    ! !> New dt based on heating term
-    ! do idir = 1,ndir
-    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir))) > zero) then
-    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))) !chuck in the density somwhere?
-    !   end if
-    ! end do
-    !
-    ! !> New dt based on photon tiring
-    ! do idir = 1,ndir
-    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
-    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?
-    !   end if
-    ! end do
+    !> New dt based on cooling term
+    do idir = 1,ndir
+      if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir))) > zero) then
+        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))) !chuck in the density somwhere?
+        print*, 'cooling term dt',  minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))
+      end if
+    end do
+
+    !> New dt based on heating term
+    do idir = 1,ndir
+      if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir))) > zero) then
+        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))) !chuck in the density somwhere?
+        print*, 'heating term dt', minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))
+      end if
+    end do
+
+    !> New dt based on photon tiring
+    do idir = 1,ndir
+      if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
+        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?
+        print*, 'photon tiring dt', minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))
+      end if
+    end do
 
   end subroutine fld_get_dt
 

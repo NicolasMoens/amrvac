@@ -27,6 +27,7 @@ contains
 
     ! Specify other user routines, for a list see mod_usr_methods.t
     usr_special_bc => special_bound
+    !usr_gravity => set_gravitation_field
 
     ! Active the physics module
     call hd_activate()
@@ -48,7 +49,6 @@ subroutine initglobaldata_usr
   unit_length        = 1.d0                                         ! cm
   unit_numberdensity = 1.d3 !cm-3,cm-3
   unit_temperature   = 1.d0                                         ! K
-
 
 end subroutine initglobaldata_usr
 
@@ -73,26 +73,26 @@ end subroutine initglobaldata_usr
     integer :: i
 
     ! Set initial values for w
-    w(ixmin1:ixmax1,ixmin2:ixmax2, rho_) = 1.d0
-    w(ixmin1:ixmax1,ixmin2:ixmax2, mom(1)) = 0.d0
-    w(ixmin1:ixmax1,ixmin2:ixmax2, mom(2)) = 0.d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d2
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(1)) = 0.d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(2)) = 0.d0
 
     !> Try some ~1/r^2 init condition for energy
-    w(ixmin1:ixmax1,ixmin2:ixmax2, e_) = 1.d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d1 !one/(hd_gamma - one)
     w(ixmin1:ixmax1,ixmin2:ixmax2, e_) = w(ixmin1:ixmax1,ixmin2:ixmax2,&
-        e_) + 1.d0/x(ixmin1:ixmax1,ixmin2:ixmax2,2)**2
+        e_) + 1.d-2/x(ixmin1:ixmax1,ixmin2:ixmax2,2)**2
 
-    ! !> Radiative Equilibrium, heating = cooling
-    call hd_get_pthermal(w,x,ixmin1,ixmin2,ixmax1,ixmax2,ixmin1,ixmin2,ixmax1,&
-       ixmax2,temperature)
+    !> Radiative Equilibrium, heating = cooling
+    call hd_get_pthermal(w,x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixGmin1,ixGmin2,&
+       ixGmax1,ixGmax2,temperature)
 
-    temperature(ixmin1:ixmax1,ixmin2:ixmax2) = temperature(ixmin1:ixmax1,&
-       ixmin2:ixmax2)/w(ixmin1:ixmax1,ixmin2:ixmax2,&
+    temperature(ixGmin1:ixGmax1,ixGmin2:ixGmax2) = temperature(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2)/w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,&
        iw_rho)*mp_cgs*fld_mu/kb_cgs*unit_length**2/(unit_time**2 * &
        unit_temperature)
 
-    w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 4*unit_velocity/const_c* &
-       maxval(temperature(ixmin1:ixmax1,ixmin2:ixmax2))**&
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 4*unit_velocity/const_c* &
+       temperature(ixGmin1:ixGmax1,ixGmin2:ixGmax2)**&
        4*fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 &
        *unit_density)
 
@@ -118,25 +118,8 @@ end subroutine initglobaldata_usr
 
     select case (iB)
 
-    ! case(1)
-    !   w(:,ixBmax2,:) = w(:,ixBmax2+1,:)
-    !   w(:,ixBmin2,:) = w(:,ixBmax2,:)
-    !
-    ! case(2)
-    !   w(:,ixBmin1,:) = w(:,ixBmin1-1,:)
-    !   w(:,ixBmax1,:) = w(:,ixBmin1,:)
-
-    ! case(3)
-    !   w(:,ixBmin2,rho_) = 1.d0
-    !   w(:,ixBmin2,mom(1)) = 0.d0
-    !   w(:,ixBmin2,mom(2)) = 0.d0
-    !   w(:,ixBmin2,e_) = 1.d0
-    !   w(:,ixBmin2,r_e) = 1.d0
-    !
-    !   w(:,ixBmax2,:) = w(:,ixBmin2,:)
-
     case(3)
-      w(:,ixBmax2, rho_) =  1.d0 !w(:,ixBmax2+1, rho_)
+      w(:,ixBmax2, rho_) =  1.d1 !w(:,ixBmax2+1, rho_)
       w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))
 
       where (w(:,ixBmax2+1 , mom(2)) > zero)
@@ -154,6 +137,32 @@ end subroutine initglobaldata_usr
     end select
 
   end subroutine special_bound
+
+!==========================================================================================
+
+!> Calculate gravitational acceleration in each dimension
+subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
+   ixOmin2,ixOmax1,ixOmax2,wCT,x,gravity_field)
+  use mod_global_parameters
+  integer, intent(in)             :: ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
+     ixOmin2,ixOmax1,ixOmax2
+  double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,1:ndim)
+  double precision, intent(in)    :: wCT(ixImin1:ixImax1,ixImin2:ixImax2,1:nw)
+  double precision, intent(out)   :: gravity_field(ixImin1:ixImax1,&
+     ixImin2:ixImax2,ndim)
+
+  double precision :: mass, distance, cavendish
+
+  mass = 1d35*unit_density*unit_length**3
+  distance = 1d3*unit_length
+  cavendish = 6.67d-8**unit_density*unit_time
+
+  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
+  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
+     2) = -cavendish*mass/((distance + x(ixImin1:ixImax1,ixImin2:ixImax2,&
+     2))**2)
+
+end subroutine set_gravitation_field
 
 !==========================================================================================
 

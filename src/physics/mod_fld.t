@@ -80,7 +80,6 @@ module mod_fld
     use mod_usr_methods
 
     use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
-    !use mod_phys, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: qdt, x(ixI^S,1:ndim)
@@ -266,7 +265,6 @@ module mod_fld
     use mod_usr_methods
 
     use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
-    !use mod_physics, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in) :: dx^D
@@ -322,32 +320,31 @@ module mod_fld
       end if
     end do
 
-    !> New dt based on cooling term
-    do idir = 1,ndir
-      if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir))) > zero) then
-        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))) !chuck in the density somwhere?
-        print*, 'cooling term dt',  minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))
-      end if
-    end do
-
-    !> New dt based on heating term
-    do idir = 1,ndir
-      if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir))) > zero) then
-        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))) !chuck in the density somwhere?
-        print*, 'heating term dt', minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))
-      end if
-    end do
-
-    !> New dt based on photon tiring
-    do idir = 1,ndir
-      if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
-        dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?
-        print*, 'photon tiring dt', minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))
-      end if
-    end do
+    ! !> New dt based on cooling term
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !     print*, 'cooling term dt',  minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_cooling*dxinv(:,:,idir)))
+    !   end if
+    ! end do
+    !
+    ! !> New dt based on heating term
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !     print*, 'heating term dt', minval(sqrt(w(ixI^S,iw_mom(idir))/radiation_heating*dxinv(:,:,idir)))
+    !   end if
+    ! end do
+    !
+    ! !> New dt based on photon tiringrad_pressure
+    ! do idir = 1,ndir
+    !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
+    !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?
+    !     print*, 'photon tiring dt', minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))
+    !   end if
+    ! end do
 
   end subroutine fld_get_dt
-
 
   ! subroutine alternating_direction(w,ixI^L,ixO^L,dtnew,dx^D,x)
   !   use mod_global_parameters
@@ -358,8 +355,12 @@ module mod_fld
   !
   !   double precision :: radiation_energy(ixI^S) = w(ixI^S,r_e)
   !   double precision :: matrix
+  !
+  !    !SET PSEUDO-TIMESTEPS
+  !
   !   !SOlVE IN ONE DIRECTION
   !   ! call in routine to set matrix, beta1, B1 and D1
+  !   call set_system_matrix
   !   ! call in routine solve system using some kind of decomposition,
   !   ! output should be placed in radiation_energy
   !
@@ -369,5 +370,20 @@ module mod_fld
   !   ! output should be placed in radiation_energy
   !
   ! end subroutine alternating_direction
+
+  ! subroutine set_system_matrix(w, x, ixI^L, ixO^L, idir, matrix, b_vec)
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in)          :: ixI^L, ixO^L, idir
+  !   double precision, intent(in) :: w(ixI^S, nw)
+  !   double precision, intent(in) :: x(ixI^S, 1:ndim)
+  !   double precision, intent(out):: matrix, b_vec
+  !   double precision :: Diff_coef(ixI^S, 1:ndim)
+  !   double precision :: sys_h, sys_beta
+  !
+  !   !> Calculate Diffusion coefficient at cell face
+  !   !> Calculate lambda
+  !
+  ! end subroutine set_system_matrix
 
 end module mod_fld

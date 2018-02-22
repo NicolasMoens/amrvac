@@ -824,11 +824,11 @@ contains
     end if
 
     !> NICOLAS MOENS
-    ! print*,'old dt', dtnew
-    ! if(hd_fld) then
-    !   call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
-    ! end if
-    ! print*,'new dt', dtnew
+    print*,'old dt', dtnew
+    if(hd_fld) then
+      call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
+    end if
+    print*,'new dt', dtnew
 
   end subroutine hd_get_dt
 

@@ -78,7 +78,9 @@ module mod_fld
     use mod_constants
     use mod_global_parameters
     use mod_usr_methods
+
     use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
+    !use mod_phys, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: qdt, x(ixI^S,1:ndim)
@@ -262,7 +264,9 @@ module mod_fld
     use mod_constants
     use mod_global_parameters
     use mod_usr_methods
+
     use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
+    !use mod_physics, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in) :: dx^D
@@ -343,6 +347,7 @@ module mod_fld
     end do
 
   end subroutine fld_get_dt
+
 
   ! subroutine alternating_direction(w,ixI^L,ixO^L,dtnew,dx^D,x)
   !   use mod_global_parameters

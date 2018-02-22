@@ -124,7 +124,7 @@ end subroutine initglobaldata_usr
     !   w(:,ixBmax2,:) = w(:,ixBmin2,:)
 
     case(3)
-      w(:,ixBmax2, rho_) =  w(:,ixBmax2+1, rho_)
+      w(:,ixBmax2, rho_) =  1.d0 !w(:,ixBmax2+1, rho_)
       w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))
 
       where (w(:,ixBmax2+1 , mom(2)) > zero)
@@ -133,7 +133,7 @@ end subroutine initglobaldata_usr
         w(:,ixBmax2, mom(2)) = zero
       end where
 
-      w(:,ixBmax2, e_) = w(:,ixBmax2+1, e_)
+      w(:,ixBmax2, e_) = 1.d0 !w(:,ixBmax2+1, e_)
       w(:,ixBmax2, r_e) = 1.d0/(10*x(1,1,2))**2 !w(:,ixBmax2+1, r_e)
       w(:,ixBmin2,:) = w(:,ixBmax2,:)
 

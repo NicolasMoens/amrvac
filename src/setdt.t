@@ -1,6 +1,6 @@
-!>setdt  - set dt for all levels between levmin and levmax. 
+!>setdt  - set dt for all levels between levmin and levmax.
 !>         dtpar>0  --> use fixed dtpar for all level
-!>         dtpar<=0 --> determine CFL limited timestep 
+!>         dtpar<=0 --> determine CFL limited timestep
 subroutine setdt()
 use mod_global_parameters
 use mod_physics, only: phys_get_dt, phys_get_aux
@@ -76,19 +76,19 @@ if(any(dtsave(1:nfile)<bigdouble).or.any(tsave(isavet(1:nfile),1:nfile)<bigdoubl
    do ifile=1,nfile
       dtmax = min(tsave(isavet(ifile),ifile)-global_time,dtmax)
    end do
-   if(dtmax > smalldouble)then 
+   if(dtmax > smalldouble)then
      dt=min(dt,dtmax)
    else
      ! dtmax=0 means dtsave is divisible by global_time
      dt=min(dt,minval(dtsave(1:nfile)))
-   end if      
+   end if
 end if
 
 if(mype==0) then
   if(any(dtsave(1:nfile)<dt)) then
     write(unitterm,*) 'Warning: timesteps: ',dt,' exceeding output intervals ', dtsave(1:nfile)
   endif
-endif   
+endif
 
 ! estimate time step of thermal conduction
 if(associated(phys_getdt_heatconduct)) then
@@ -135,10 +135,10 @@ do iigrid=1,igridstail_active; igrid=igrids_active(iigrid);
    dt_grid(igrid)=dt
 end do
 !$OMP END PARALLEL DO
-     
+
 
 ! global Lax-Friedrich finite difference flux splitting needs fastest wave-speed
-! so does GLM: 
+! so does GLM:
 if(need_global_cmax) call MPI_ALLREDUCE(cmax_mype,cmax_global,1,&
      MPI_DOUBLE_PRECISION,MPI_MAX,icomm,ierrmpi)
 
@@ -146,28 +146,28 @@ contains
 
   !> compute CFL limited dt (for variable time stepping)
   subroutine getdt_courant(w,ixI^L,ixO^L,dtnew,x)
-  
+
   use mod_global_parameters
   use mod_physics, only: phys_get_cmax
-  
+
   integer, intent(in) :: ixI^L, ixO^L
   double precision, intent(in) :: x(ixI^S,1:ndim)
   double precision, intent(inout) :: w(ixI^S,1:nw), dtnew
-  
+
   integer :: idims
   double precision :: courantmax, dxinv(1:ndim), courantmaxtot, courantmaxtots
   double precision :: cmax(ixI^S), cmaxtot(ixI^S), tmp(ixI^S)
   !-----------------------------------------------------------------------------
   dtnew=bigdouble
-  
+
   courantmax=zero
   courantmaxtot=zero
   courantmaxtots=zero
-  
+
   ^D&dxinv(^D)=one/dx^D;
-  
+
   cmaxtot(ixO^S)=zero
-  
+
   do idims=1,ndim
      call phys_get_cmax(w,x,ixI^L,ixO^L,idims,cmax)
      if(need_global_cmax) cmax_mype = max(cmax_mype,maxval(cmax(ixO^S)))
@@ -181,7 +181,7 @@ contains
      end if
      courantmaxtot=courantmaxtot+courantmax
   end do
-  
+
   select case (typecourant)
   case ('minimum')
      ! courantmax='max(c/dx)'
@@ -197,7 +197,7 @@ contains
      write(unitterm,*)'Unknown typecourant=',typecourant
      call mpistop("Error from getdt_courant: no such typecourant!")
   end select
-  
+
   end subroutine getdt_courant
 
 end subroutine setdt

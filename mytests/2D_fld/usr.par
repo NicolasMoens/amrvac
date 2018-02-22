@@ -15,14 +15,14 @@
    itsave(1,1)     = 0
    itsave(1,2)     = 0
    !dtsave_dat     = 2.d-4
-   ditsave_dat     = 1
-   ditsave_log     = 1
+   ditsave_dat     = 100
+   ditsave_log     = 100
 /
 
  &stoplist
    !time_max = 2.0d-3
    !dtmin = 1.0d-9
-   it_max = 1
+   it_max = 5000
 /
 
  &methodlist
@@ -43,12 +43,12 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 10
+   domain_nx1         = 100
    domain_nx2         = 100
-   block_nx1          = 10
+   block_nx1          = 100
    block_nx2          = 100
-   xprobmin1       =  -0.1d0
-   xprobmax1       =  0.1d0
+   xprobmin1       =  -0.5d0
+   xprobmax1       =  0.5d0
    xprobmin2       =  0.0d0
    xprobmax2       =  1.0d0
    iprob=1

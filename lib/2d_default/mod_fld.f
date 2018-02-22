@@ -194,9 +194,10 @@ module mod_fld
     !> |grad E|/(rho kappa E)
     normgrad2(ixImin1:ixImax1,ixImin2:ixImax2) = zero
     do idir = 1,ndir
-      call gradient(w(ixImin1:ixImax1,ixImin2:ixImax2, iw_r_e),ixImin1,ixImin2,&
-         ixImax1,ixImax2,ixOmin1,ixOmin2,ixOmax1,ixOmax2,idir,&
-         grad_r_e(ixImin1:ixImax1,ixImin2:ixImax2,idir)) !!! IS IT WRONG TO USE ixOmin1?????,ixOmin2?????,ixOmax1?????,ixOmax2?????
+      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+      call grad(w(ixImin1:ixImax1,ixImin2:ixImax2, iw_r_e),ixImin1,ixImin2,&
+         ixImax1,ixImax2,ixOmin1,ixOmin2,ixOmax1,ixOmax2,idir,x,&
+         grad_r_e(ixImin1:ixImax1,ixImin2:ixImax2,idir))
       normgrad2(ixImin1:ixImax1,ixImin2:ixImax2) = normgrad2(ixImin1:ixImax1,&
          ixImin2:ixImax2) + grad_r_e(ixImin1:ixImax1,ixImin2:ixImax2,idir)**2
     end do
@@ -229,6 +230,42 @@ module mod_fld
 
   end subroutine fld_get_radflux
 
+  subroutine grad(q,ixImin1,ixImin2,ixImax1,ixImax2,ixmin1,ixmin2,ixmax1,&
+     ixmax2,idir,x,gradq)
+    ! Compute the true gradient of a scalar q within ixL in direction idir ie :
+    !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
+    !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
+    use mod_global_parameters
+
+    integer :: ixImin1,ixImin2,ixImax1,ixImax2, ixmin1,ixmin2,ixmax1,ixmax2,&
+        idir
+    double precision :: q(ixImin1:ixImax1,ixImin2:ixImax2),&
+        gradq(ixImin1:ixImax1,ixImin2:ixImax2)
+    double precision, intent(in) :: x(ixImin1:ixImax1,ixImin2:ixImax2,1:ndim)
+    integer :: jxmin1,jxmin2,jxmax1,jxmax2, hxmin1,hxmin2,hxmax1,hxmax2
+    !-----------------------------------------------------------------------------
+    jxmin1=ixmin1+kr(idir,1);jxmin2=ixmin2+kr(idir,2)
+    jxmax1=ixmax1+kr(idir,1);jxmax2=ixmax2+kr(idir,2);
+    hxmin1=ixmin1-kr(idir,1);hxmin2=ixmin2-kr(idir,2)
+    hxmax1=ixmax1-kr(idir,1);hxmax2=ixmax2-kr(idir,2);
+    gradq(ixmin1:ixmax1,ixmin2:ixmax2)=(q(jxmin1:jxmax1,&
+       jxmin2:jxmax2)-q(hxmin1:hxmax1,hxmin2:hxmax2))/(x(jxmin1:jxmax1,&
+       jxmin2:jxmax2,idir)-x(hxmin1:hxmax1,hxmin2:hxmax2,idir))
+    select case (typeaxial)
+    case('slab') ! nothing to do
+    case('cylindrical')
+      if (idir==phi_) gradq(ixmin1:ixmax1,ixmin2:ixmax2)=gradq(ixmin1:ixmax1,&
+         ixmin2:ixmax2)/ x(ixmin1:ixmax1,ixmin2:ixmax2,r_)
+    case('spherical')
+      if (idir==2   ) gradq(ixmin1:ixmax1,ixmin2:ixmax2)=gradq(ixmin1:ixmax1,&
+         ixmin2:ixmax2)/ x(ixmin1:ixmax1,ixmin2:ixmax2,r_)
+      if (idir==phi_) gradq(ixmin1:ixmax1,ixmin2:ixmax2)=gradq(ixmin1:ixmax1,&
+         ixmin2:ixmax2)/(x(ixmin1:ixmax1,ixmin2:ixmax2,&
+         r_)*dsin(x(ixmin1:ixmax1,ixmin2:ixmax2,2)))
+    case default
+      call mpistop('Unknown geometry')
+    end select
+  end subroutine grad
 
   subroutine fld_get_flux_cons(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
      ixOmin2,ixOmax1,ixOmax2, idim, f)

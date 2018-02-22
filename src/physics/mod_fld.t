@@ -167,7 +167,8 @@ module mod_fld
     !> |grad E|/(rho kappa E)
     normgrad2(ixI^S) = zero
     do idir = 1,ndir
-      call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixI^S,idir))
       normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
     end do
     fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
@@ -189,6 +190,31 @@ module mod_fld
 
   end subroutine fld_get_radflux
 
+  subroutine grad(q,ixI^L,ix^L,idir,x,gradq)
+    ! Compute the true gradient of a scalar q within ixL in direction idir ie :
+    !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
+    !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
+    use mod_global_parameters
+
+    integer :: ixI^L, ix^L, idir
+    double precision :: q(ixI^S), gradq(ixI^S)
+    double precision, intent(in) :: x(ixI^S,1:ndim)
+    integer :: jx^L, hx^L
+    !-----------------------------------------------------------------------------
+    jx^L=ix^L+kr(idir,^D);
+    hx^L=ix^L-kr(idir,^D);
+    gradq(ix^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
+    select case (typeaxial)
+    case('slab') ! nothing to do
+    case('cylindrical')
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
+    case('spherical')
+      if (idir==2   ) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/(x(ix^S,r_)*dsin(x(ix^S,2)))
+    case default
+      call mpistop('Unknown geometry')
+    end select
+  end subroutine grad
 
   subroutine fld_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters

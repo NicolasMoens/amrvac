@@ -82,12 +82,9 @@ end subroutine initglobaldata_usr
     w(ixmin1:ixmax1,ixmin2:ixmax2, e_) = w(ixmin1:ixmax1,ixmin2:ixmax2,&
         e_) + 1.d0/x(ixmin1:ixmax1,ixmin2:ixmax2,2)**2
 
-    !> Radiative Equilibrium, heating = cooling
+    ! !> Radiative Equilibrium, heating = cooling
     call hd_get_pthermal(w,x,ixmin1,ixmin2,ixmax1,ixmax2,ixmin1,ixmin2,ixmax1,&
        ixmax2,temperature)
-    print*, 'minimum pressure', minval(temperature)
-    print*, 'minimum density', minval(w(:,:,rho_))
-    print*, temperature
 
     temperature(ixmin1:ixmax1,ixmin2:ixmax2) = temperature(ixmin1:ixmax1,&
        ixmin2:ixmax2)/w(ixmin1:ixmax1,ixmin2:ixmax2,&
@@ -95,12 +92,9 @@ end subroutine initglobaldata_usr
        unit_temperature)
 
     w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 4*unit_velocity/const_c* &
-       temperature(ixmin1:ixmax1,ixmin2:ixmax2)**4*fld_boltzman_cgs*unit_time**&
-       3 * unit_temperature**4 /(unit_length**3 *unit_density)
-
-    ! do i= 1,20
-    !   print*, i, w(i,5,:)!, temperature(5,i)
-    ! end do
+       maxval(temperature(ixmin1:ixmax1,ixmin2:ixmax2))**&
+       4*fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 &
+       *unit_density)
 
   end subroutine initial_conditions
 

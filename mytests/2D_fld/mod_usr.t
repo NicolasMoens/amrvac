@@ -78,21 +78,14 @@ end subroutine initglobaldata_usr
     w(ix^S, e_) = 1.d0
     w(ix^S, e_) = w(ix^S, e_) + 1.d0/x(ix^S,2)**2
 
-    !> Radiative Equilibrium, heating = cooling
+    ! !> Radiative Equilibrium, heating = cooling
     call hd_get_pthermal(w,x,ix^L,ix^L,temperature)
-    print*, 'minimum pressure', minval(temperature)
-    print*, 'minimum density', minval(w(:,:,rho_))
-    print*, temperature
 
     temperature(ix^S) = temperature(ix^S)/w(ix^S,iw_rho)*mp_cgs*fld_mu/kb_cgs&
     *unit_length**2/(unit_time**2 * unit_temperature)
 
-    w(ix^S,r_e) = 4*unit_velocity/const_c* temperature(ix^S)**4*&
+    w(ix^S,r_e) = 4*unit_velocity/const_c* maxval(temperature(ix^S))**4*&
     fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
-
-    ! do i= 1,20
-    !   print*, i, w(i,5,:)!, temperature(5,i)
-    ! end do
 
   end subroutine initial_conditions
 

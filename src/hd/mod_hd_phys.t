@@ -568,6 +568,9 @@ contains
        pth(ixO^S) = hd_adiab * w(ixO^S, rho_)**hd_gamma
     end if
 
+    !print*, '########## hd_kin_e ###########'
+    !print*, hd_kin_en(w, ixI^L, ixO^L)
+
   end subroutine hd_get_pthermal
 
   ! Calculate flux f_idim[iw]

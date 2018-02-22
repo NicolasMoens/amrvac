@@ -14,7 +14,7 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   !dtsave_dat       = 2.d-4
+   !dtsave_dat     = 2.d-4
    ditsave_dat     = 1
    ditsave_log     = 1
 /

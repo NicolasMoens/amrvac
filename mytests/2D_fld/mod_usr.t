@@ -8,7 +8,9 @@ module mod_usr
   implicit none
 
   ! Custom variables can be defined here
-  ! ...
+  double precision :: fld_boltzman_cgs = 5.67036713d-8
+  double precision :: d_inflo = 1d2
+  double precision :: T_eff = 5d3
 
 contains
 
@@ -65,26 +67,31 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixG^S, nw)
 
     double precision :: temperature(ixG^S)
-    double precision :: fld_boltzman_cgs = 5.67036713d-8
+    double precision :: int_energy(ixG^S)
 
     integer :: i
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1.d2
+    w(ixG^S, rho_) = d_inflo
     w(ixG^S, mom(1)) = 0.d0
     w(ixG^S, mom(2)) = 0.d0
 
     !> Try some ~1/r^2 init condition for energy
-    w(ixG^S, e_) = 1.d1 !one/(hd_gamma - one)
+    int_energy = T_eff * one/(hd_gamma-one) * w(ixG^S, rho_)*kb_cgs/(mp_cgs*fld_mu)*unit_time**2/(unit_length**2)
+    w(ixG^S, e_) = int_energy
     w(ix^S, e_) = w(ix^S, e_) + 1.d-2/x(ix^S,2)**2
 
+    ! !> Radiative Equilibrium, heating = cooling
+    ! call hd_get_pthermal(w,x,ixG^L,ixG^L,temperature)
+    !
+    ! temperature(ixG^S) = temperature(ixG^S)/w(ixG^S,iw_rho)*mp_cgs*fld_mu/kb_cgs&
+    ! *unit_length**2/(unit_time**2 * unit_temperature)
+    !
+    ! w(ixG^S,r_e) = 4*unit_velocity/const_c* temperature(ixG^S)**4*&
+    ! fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
+
     !> Radiative Equilibrium, heating = cooling
-    call hd_get_pthermal(w,x,ixG^L,ixG^L,temperature)
-
-    temperature(ixG^S) = temperature(ixG^S)/w(ixG^S,iw_rho)*mp_cgs*fld_mu/kb_cgs&
-    *unit_length**2/(unit_time**2 * unit_temperature)
-
-    w(ixG^S,r_e) = 4*unit_velocity/const_c* temperature(ixG^S)**4*&
+    w(ixG^S,r_e) = 4*unit_velocity/const_c* (T_eff/unit_temperature)**4*&
     fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
 
   end subroutine initial_conditions
@@ -103,11 +110,12 @@ end subroutine initglobaldata_usr
     integer, intent(in) :: ixG^L, ixB^L, iB
     double precision, intent(in) :: qt, x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
+    double precision :: e_inflo
 
     select case (iB)
 
     case(3)
-      w(:,ixBmax2, rho_) =  1.d1 !w(:,ixBmax2+1, rho_)
+      w(:,ixBmax2, rho_) =  d_inflo !w(:,ixBmax2+1, rho_)
       w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))
 
       where (w(:,ixBmax2+1 , mom(2)) > zero)
@@ -116,8 +124,10 @@ end subroutine initglobaldata_usr
         w(:,ixBmax2, mom(2)) = zero
       end where
 
-      w(:,ixBmax2, e_) = 1.d0 !w(:,ixBmax2+1, e_)
-      w(:,ixBmax2, r_e) = 1.d0/(10*x(1,1,2))**2 !w(:,ixBmax2+1, r_e)
+      e_inflo = T_eff * one/(hd_gamma-one) * d_inflo *kb_cgs/(mp_cgs*fld_mu)*unit_time**2/(unit_length**2)
+      w(:,ixBmax2, e_) = e_inflo !1.d0 !w(:,ixBmax2+1, e_)
+      w(:,ixBmax2, r_e) = 4*unit_velocity/const_c* (T_eff/unit_temperature)**4*&
+      fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !w(:,ixBmax2+1, r_e)
       w(:,ixBmin2,:) = w(:,ixBmax2,:)
 
     case default

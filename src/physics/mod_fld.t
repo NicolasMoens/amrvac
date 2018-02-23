@@ -177,7 +177,6 @@ module mod_fld
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
     fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
-    ! use two instead of 2??? 3 three 6 six
 
     !> Calculate the Flux using the fld closure relation
     !> F = -c*lambda/(kappa*rho) *grad E
@@ -191,31 +190,6 @@ module mod_fld
 
   end subroutine fld_get_radflux
 
-  subroutine grad(q,ixI^L,ix^L,idir,x,gradq)
-    ! Compute the true gradient of a scalar q within ixL in direction idir ie :
-    !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
-    !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
-    use mod_global_parameters
-
-    integer :: ixI^L, ix^L, idir
-    double precision :: q(ixI^S), gradq(ixI^S)
-    double precision, intent(in) :: x(ixI^S,1:ndim)
-    integer :: jx^L, hx^L
-    !-----------------------------------------------------------------------------
-    jx^L=ix^L+kr(idir,^D);
-    hx^L=ix^L-kr(idir,^D);
-    gradq(ix^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
-    select case (typeaxial)
-    case('slab') ! nothing to do
-    case('cylindrical')
-      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
-    case('spherical')
-      if (idir==2   ) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
-      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/(x(ix^S,r_)*dsin(x(ix^S,2)))
-    case default
-      call mpistop('Unknown geometry')
-    end select
-  end subroutine grad
 
   subroutine fld_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
@@ -371,19 +345,154 @@ module mod_fld
   !
   ! end subroutine alternating_direction
 
-  ! subroutine set_system_matrix(w, x, ixI^L, ixO^L, idir, matrix, b_vec)
+  ! subroutine set_system_matrix(w, x, ixI^L, ixO^L, idir, dt, ps_dt matrix, b_vec)
   !   use mod_global_parameters
   !
   !   integer, intent(in)          :: ixI^L, ixO^L, idir
+  !   double precision, intent(in) :: dt, ps_dt
   !   double precision, intent(in) :: w(ixI^S, nw)
   !   double precision, intent(in) :: x(ixI^S, 1:ndim)
-  !   double precision, intent(out):: matrix, b_vec
-  !   double precision :: Diff_coef(ixI^S, 1:ndim)
-  !   double precision :: sys_h, sys_beta
+  !   double precision, intent(out):: matrix
+  !   double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S)
+  !   double precision :: grad_r_e(ixI^S)
+  !   double precision :: Diff_coef(ixI^S)
+  !   double precision :: sys_h(ixI^S), sys_beta(ixI^S)
+  !   integer :: jx^L
+  !   integer :: idir1, i
   !
-  !   !> Calculate Diffusion coefficient at cell face
-  !   !> Calculate lambda
+  !   !> Calculate R everywhere
+  !   !> |grad E|/(rho kappa E)
+  !   normgrad2(ixI^S) = zero
+  !   do idir1 = 1,ndir
+  !     !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+  !     call grad_face(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir1,idir,x,grad_r_e(ixI^S,idir))
+  !     normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+  !   end do
+  !   fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+  !
+  !   !> Calculate the flux limiter, lambda
+  !   !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
+  !   fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+  !
+  !   !> Diffusion coeficient c*lamda/ (rho*kappa)
+  !   Diff_coef(ixI^S) = const_c/unit_velocity*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho))
+  !
+  !   !> Calculate h
+  !   !> This should be a single float !?!?!?!
+  !   sys_h(ixI^S) = ps_dt/(2*dx(ixI^S,idir)**2)
+  !
+  !   !> Calculate beta
+  !   jxI^S = ixI^S+kr(idir,^D)
+  !   sys_beta(ixI^S) = one + ps_dt/(2*dt) + sys_h(ixI^S)*(Diff_coef(jxI^S) + Diff_coef(ixI^S))
+  !
+  !   !> Assemble matrix
+  !   !> What to do with boundary conditions?!?!?
+  !   do i =
+  !     matrix(ixI^S,i,i) = sys_beta(ixI^S)
+  !     matrix(ixI^S,i+1,i) = -sys_h*Diff_coef
+  !     matrix(ixI^S,i,i+1) = -sys_h*Diff_coef
+  !   end do
   !
   ! end subroutine set_system_matrix
+  !
+  ! subroutine set_system_b_vec(w, x, ixI^L, ixO^L, idir, dt, ps_dt matrix, b_vec)
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in)          :: ixI^L, ixO^L, idir
+  !   double precision, intent(in) :: dt, ps_dt
+  !   double precision, intent(in) :: w(ixI^S, nw), Rad_e_n(ixI^S)
+  !   double precision, intent(in) :: x(ixI^S, 1:ndim)
+  !   double precision, intent(out):: b_vec
+  !   double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S)
+  !   double precision :: grad_r_e(ixI^S)
+  !   double precision :: Diff_coef(ixI^S)
+  !   double precision :: sys_h(ixI^S)
+  !   integer :: jx^L
+  !   integer :: idir1, i
+  !
+  !   !> Calculate R everywhere
+  !   !> |grad E|/(rho kappa E)
+  !   normgrad2(ixI^S) = zero
+  !   do idir1 = 1,ndir
+  !     !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+  !     call grad_face(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir1,idir,x,grad_r_e(ixI^S,idir))
+  !     normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+  !   end do
+  !   fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+  !
+  !   !> Calculate the flux limiter, lambda
+  !   !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
+  !   fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+  !
+  !   !> Diffusion coeficient c*lamda/ (rho*kappa)
+  !   Diff_coef(ixI^S) = const_c/unit_velocity*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho))
+  !
+  !   !> Calculate h
+  !   !> This should be a single float !?!?!?!
+  !   sys_h(ixI^S) = ps_dt/(2*dx(ixI^S,idir)**2)
+  !
+  !   !> Assemble vector
+  !   do i =
+  !     b(i) = (one - sys_h*(Diff_coef(i,j+1)+Diff_coef(i,j)))*w(i,j,r_e) + &
+  !     sys_h*Diff_coef(i,j+1)*w(i,j+1,r_e) + sys_h*Diff_coef(i,j)*w(i,j-1,r_e) + ps_dt/(2*dt)*Rad_e_n(i,j)
+  !   end do
+  !
+  ! end subroutine set_system_matrix
+  !
+
+  subroutine grad(q,ixI^L,ix^L,idir,x,gradq)
+    ! Compute the true gradient of a scalar q within ixL in direction idir ie :
+    !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
+    !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
+    use mod_global_parameters
+
+    integer :: ixI^L, ix^L, idir
+    double precision :: q(ixI^S), gradq(ixI^S)
+    double precision, intent(in) :: x(ixI^S,1:ndim)
+    integer :: jx^L, hx^L
+    !-----------------------------------------------------------------------------
+    jx^L=ix^L+kr(idir,^D);
+    hx^L=ix^L-kr(idir,^D);
+    gradq(ix^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
+    select case (typeaxial)
+    case('slab') ! nothing to do
+    case('cylindrical')
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
+    case('spherical')
+      if (idir==2   ) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/(x(ix^S,r_)*dsin(x(ix^S,2)))
+    case default
+      call mpistop('Unknown geometry')
+    end select
+  end subroutine grad
+
+  subroutine grad_face(q,ixI^L,ix^L,idir,fdir,x,gradq)
+    ! Compute the true gradient of a scalar q within ixL in direction idir ie :
+
+    !AT CELL FACE
+
+    !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
+    !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
+    use mod_global_parameters
+
+    integer :: ixI^L, ix^L, idir, fdir
+    double precision :: q(ixI^S), gradq(ixI^S)
+    double precision, intent(in) :: x(ixI^S,1:ndim)
+    integer :: jx^L, hx^L
+    !-----------------------------------------------------------------------------
+    !Only move to face in direction fdir, stay centered in the other
+    hx^L=ix^L-kr(fdir,^D);
+    gradq(ix^S)=(q(ix^S)-q(hx^S))/(x(ix^S,idir)-x(hx^S,idir))
+    select case (typeaxial)
+    case('slab') ! nothing to do
+    case('cylindrical')
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)*two/ (x(ix^S,r_)+x(hx^S,r_))
+    case('spherical')
+      if (idir==2   ) gradq(ix^S)=gradq(ix^S)*two/ (x(ix^S,r_)+x(hx^S,r_))
+      if (idir==phi_) gradq(ix^S)=gradq(ix^S)*two/((x(ix^S,r_)+x(hx^S,r_))*dsin((x(ix^S,2)+x(hx^S,2))/two))
+    case default
+      call mpistop('Unknown geometry')
+    end select
+  end subroutine grad_face
 
 end module mod_fld

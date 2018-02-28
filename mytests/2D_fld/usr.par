@@ -8,8 +8,8 @@
   base_filename='./output/fld'
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
-  saveprim         = T
-  nwauxio = 5
+  saveprim         = F
+  nwauxio = 0
 /
 
  &savelist

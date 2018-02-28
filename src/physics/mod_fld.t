@@ -81,7 +81,7 @@ module mod_fld
     use mod_global_parameters
     use mod_usr_methods
 
-    use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
+    use mod_physics, only: phys_get_pthermal  !needed to get temp
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: qdt, x(ixI^S,1:ndim)
@@ -121,7 +121,7 @@ module mod_fld
       if(energy .and. .not.block%e_is_internal) then
 
         !> Get pressure
-        call hd_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
+        call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
 
         print*, 'pressure', temperature(10,10)
         !> calc Temperature as p/rho * (m_h*mu)/k
@@ -288,7 +288,7 @@ module mod_fld
     use mod_global_parameters
     use mod_usr_methods
 
-    use mod_hd_phys, only: hd_get_pthermal  !needed to get temp
+    use mod_physics, only: phys_get_pthermal  !needed to get temp
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in) :: dx^D
@@ -327,7 +327,7 @@ module mod_fld
 
 
     !> calc Temperature as p/rho * (m_h*mu)/k
-    call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
+    call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
     temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
     *unit_length**2/(unit_time**2 * unit_temperature)
 

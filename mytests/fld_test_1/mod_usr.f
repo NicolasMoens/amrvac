@@ -45,11 +45,17 @@ contains
 
 subroutine initglobaldata_usr
   use mod_global_parameters
+  use mod_constants
+
+  double precision :: rho_0 = 1d-7
+  double precision :: t_0 = 1d-11
+  double precision :: e_0 = 1d10
 
   !Fix dimensionless stuff here
-  unit_length        = 1.d0                                         ! cm
-  unit_density       = 1.d0 !g cm-3,cm-3
-  unit_temperature   = 1.d0                                         ! K
+  !unit_length        = sqrt(e_0/rho_0)*t_0                                        ! cm
+  unit_time = t_0
+  unit_numberdensity = rho_0/(fld_mu*mp_cgs) !cm-3,cm-3
+  unit_temperature   = unit_numberdensity*e_0/(hd_gamma*kB_cgs) !K
 
 end subroutine initglobaldata_usr
 
@@ -74,11 +80,11 @@ end subroutine initglobaldata_usr
     integer :: i
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1d-7
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1d0
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(1)) = zero
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(2)) = zero
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1d10
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1d12
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1d2
 
   end subroutine initial_conditions
 
@@ -109,7 +115,9 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
        1:ndim)
 
-    w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1d12
+    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1d0
+    w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
+    w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1d2
 
     print*, 'WHYSIS THIS NOT WORKING', w(50,50,e_)
 

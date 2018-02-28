@@ -45,11 +45,17 @@ contains
 
 subroutine initglobaldata_usr
   use mod_global_parameters
+  use mod_constants
+
+  double precision :: rho_0 = 1d-7
+  double precision :: t_0 = 1d-11
+  double precision :: e_0 = 1d10
 
   !Fix dimensionless stuff here
-  unit_length        = 1.d0                                         ! cm
-  unit_density       = 1.d0                                         ! g cm^-3
-  unit_temperature   = 1.d0                                         ! K
+  !unit_length        = sqrt(e_0/rho_0)*t_0                                        ! cm
+  unit_time = t_0
+  unit_numberdensity = rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
+  unit_temperature   = unit_numberdensity*e_0/(hd_gamma*kB_cgs)                   ! K
 
 end subroutine initglobaldata_usr
 
@@ -71,11 +77,11 @@ end subroutine initglobaldata_usr
     integer :: i
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1d-7
+    w(ixG^S, rho_) = 1d0
     w(ixG^S, mom(1)) = zero
     w(ixG^S, mom(2)) = zero
-    w(ixG^S, e_) = 1d10
-    w(ixG^S,r_e) = 1d12
+    w(ixG^S, e_) = 1d0
+    w(ixG^S,r_e) = 1d2
 
   end subroutine initial_conditions
 
@@ -103,7 +109,9 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,r_e) = 1d12
+    w(ixI^S,rho_) = 1d0
+    w(ixI^S,mom(:)) = zero
+    w(ixI^S,r_e) = 1d2
 
     print*, 'WHYSIS THIS NOT WORKING', w(50,50,e_)
 

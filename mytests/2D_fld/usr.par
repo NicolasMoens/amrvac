@@ -9,20 +9,21 @@
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = T
+  nwauxio = 5
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
    !dtsave_dat     = 2.d-4
-   ditsave_dat     = 100
-   ditsave_log     = 100
+   ditsave_dat     = 1
+   ditsave_log     = 1
 /
 
  &stoplist
    !time_max = 2.0d-3
    !dtmin = 1.0d-9
-   it_max = 6000
+   it_max = 10
 /
 
  &methodlist

@@ -9,7 +9,7 @@ module mod_usr
 
   ! Custom variables can be defined here
   double precision :: fld_boltzman_cgs = 5.67036713d-8
-  double precision :: d_inflo = 1d2
+  double precision :: d_inflo = 1d3
   double precision :: T_eff = 5d3
 
 contains
@@ -30,6 +30,10 @@ contains
     ! Specify other user routines, for a list see mod_usr_methods.t
     usr_special_bc => special_bound
     !usr_gravity => set_gravitation_field
+
+    ! Output routines
+    usr_aux_output    => specialvar_output
+    usr_add_aux_names => specialvarnames_output
 
     ! Active the physics module
     call hd_activate()
@@ -173,6 +177,59 @@ subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
      2))**2)
 
 end subroutine set_gravitation_field
+
+!==========================================================================================
+
+subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
+   ixOmax1,ixOmax2,w,x,normconv)
+! this subroutine can be used in convert, to add auxiliary variables to the
+! converted output file, for further analysis using tecplot, paraview, ....
+! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+!
+! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+! corresponding normalization values (default value 1)
+  use mod_global_parameters
+  use mod_physics
+
+  integer, intent(in)                :: ixImin1,ixImin2,ixImax1,ixImax2,&
+     ixOmin1,ixOmin2,ixOmax1,ixOmax2
+  double precision, intent(in)       :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
+     1:ndim)
+  double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
+     nw+nwauxio)
+  double precision                   :: normconv(0:nw+nwauxio)
+
+  double precision                   :: rad_flux(ixImin1:ixImax1,&
+     ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
+      fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
+     ixImin2:ixImax2)
+
+  call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
+     ixOmax1,ixOmax2, rad_flux, rad_pressure)
+  call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
+     ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
+
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2,1)
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2,2)
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2)
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2)
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2)
+
+end subroutine specialvar_output
+
+subroutine specialvarnames_output(varnames)
+! newly added variables need to be concatenated with the w_names/primnames string
+  use mod_global_parameters
+  character(len=*) :: varnames
+
+  varnames = 'F1 F2 RP L R'
+
+end subroutine specialvarnames_output
 
 !==========================================================================================
 

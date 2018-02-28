@@ -21,6 +21,7 @@ module mod_fld
     !> public methods
     public :: fld_add_source
     public :: fld_get_radflux
+    public :: fld_get_fluxlimiter
     !public :: fld_get_flux
     public :: fld_get_flux_cons
     public :: fld_get_dt
@@ -42,6 +43,7 @@ module mod_fld
   end subroutine fld_params_read
 
   !> Set radiation energy variable
+  !> In  Erg/cm^3
   function var_set_radiation_energy() result(iw)
     use mod_variables
     integer :: iw
@@ -98,7 +100,7 @@ module mod_fld
     double precision :: radiation_heating(ixI^S)
     double precision :: photon_tiring(ixI^S)
 
-    double precision :: fld_boltzman_cgs = 5.67036713d-8 !*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !fix units !AREN'T THESE csts KNOWN ANYWHERE ELSE?
+    double precision :: fld_boltzman_cgs = 5.67036713d-5 !*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !fix units !AREN'T THESE csts KNOWN ANYWHERE ELSE?
     integer :: idir
 
     if(qsourcesplit .eqv. fld_split) then
@@ -118,21 +120,37 @@ module mod_fld
 
       if(energy .and. .not.block%e_is_internal) then
 
-        !> calc Temperature as p/rho * (m_h*mu)/k
-        call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
-        temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
-        *unit_length**2/(unit_time**2 * unit_temperature)
+        !> Get pressure
+        call hd_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
 
-        !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
-        radiation_cooling(ixI^S) = 4*fld_kappa*wCT(ixI^S,iw_rho)*temperature(ixI^S)&
-        *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
-        !> Heating = c kappa rho E_rad
-        radiation_heating(ixI^S) = fld_kappa*wCT(ixI^S,iw_rho)*wCT(ixI^S,r_e) *const_c/unit_velocity
+        print*, 'pressure', temperature(10,10)
+        !> calc Temperature as p/rho * (m_h*mu)/k
+        temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))&
+        *mp_cgs*fld_mu/(unit_density*unit_length**3)&
+        /kb_cgs*unit_temperature*unit_time**2/(unit_density*unit_length**5)
+
+        !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
+        radiation_cooling(ixI^S) = 4*fld_kappa*fld_boltzman_cgs*temperature(ixI^S)**4 &
+        *unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)&
+        *wCT(ixI^S,iw_rho) !!!Going from energy per density to energydensity
+        !> Heating = c kappa E_rad
+        radiation_heating(ixI^S) = fld_kappa*wCT(ixI^S,iw_r_e) *const_c/unit_velocity&
+        *wCT(ixI^S,iw_rho) !!!Going from energy per density to energydensity
 
         !> Energy equation source terms
         w(ixO^S,iw_e) = w(ixO^S,iw_e) &
            + qdt * radiation_heating(ixI^S) &
            - qdt * radiation_cooling(ixI^S)
+
+
+        print*, 'temperature', temperature(10,10)*unit_temperature
+
+        print*, 'dt: ', qdt
+
+        print*, 'heating: ', qdt * radiation_heating(10,10)
+        print*, 'cooling: ', qdt * radiation_cooling(10,10)
+
+        print*, 'energy: ',  w(10,10,iw_e)
 
       end if
 
@@ -149,6 +167,38 @@ module mod_fld
     end if
 
   end subroutine fld_add_source
+
+
+  !> Calculate fld flux limiter
+  subroutine fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+    use mod_global_parameters
+    !use geometry, only: gradient
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    double precision, intent(in) :: w(ixI^S, nw)
+    double precision, intent(in) :: x(ixI^S, 1:ndim)
+    double precision, intent(out) :: fld_R(ixI^S), fld_lambda(ixI^S)
+    double precision ::  normgrad2(ixI^S)
+    double precision :: grad_r_e(ixI^S, 1:ndim)
+    integer :: idir
+
+    !> Calculate R everywhere
+    !> |grad E|/(rho kappa E)
+    normgrad2(ixI^S) = zero
+    do idir = 1,ndir
+      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixI^S,idir))
+      normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+    end do
+    fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+
+    !> Calculate the flux limiter, lambda
+    !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
+    fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+
+  end subroutine fld_get_fluxlimiter
+
+
 
   !> Calculate Radiation Flux
   !> Returns Radiation flux and radiation pressure
@@ -268,16 +318,24 @@ module mod_fld
       radiation_force(ixI^S,idir) = fld_kappa*w(ixI^S,iw_rho)*rad_flux(ixI^S, idir) *unit_velocity/const_c
     end do
 
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !! CHECK CALCULATIONS WITH ADD_SOURCE
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
     !> calc Temperature as p/rho * (m_h*mu)/k
     call hd_get_pthermal(w,x,ixI^L,ixO^L,temperature)
     temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))*mp_cgs*fld_mu/kb_cgs&
     *unit_length**2/(unit_time**2 * unit_temperature)
 
-    !> Cooling = -4pi kappa rho B = 4 kappa rho sigma T**4
-    radiation_cooling(ixI^S) = 4*fld_kappa*w(ixI^S,iw_rho)*temperature(ixI^S)&
-    *fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
-    !> Heating = c kappa rho E_rad
-    radiation_heating(ixI^S) = fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e) *const_c/unit_velocity
+    !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
+    radiation_cooling(ixI^S) = 4*fld_kappa*fld_boltzman_cgs*temperature(ixI^S)**4 &
+    *unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density)
+    !> Heating = c kappa E_rad
+    radiation_heating(ixI^S) = fld_kappa*w(ixI^S,r_e) *const_c/unit_velocity
 
     !> Photon tiring
     call divvector(w(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
@@ -310,7 +368,7 @@ module mod_fld
     !   end if
     ! end do
     !
-    ! !> New dt based on photon tiringrad_pressure
+    ! !> New dt based on photon tiring
     ! do idir = 1,ndir
     !   if (minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir))) > zero) then
     !     dtnew = min( dtnew, minval(sqrt(w(ixI^S,iw_mom(idir))/photon_tiring*dxinv(:,:,idir)))) !chuck in the density somwhere?

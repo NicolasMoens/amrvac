@@ -80,8 +80,6 @@ module mod_fld
 
     !> Dimensionless Boltzman constante sigma
     fld_sigma_0 = (5.67051d-5*unit_temperature**4)/(unit_velocity*unit_pressure)
-    fld_sigma_0 = (5.67051d-5)/(unit_velocity*unit_pressure)/unit_temperature**4
-
 
   end subroutine fld_init
 
@@ -112,7 +110,7 @@ module mod_fld
     double precision :: radiation_heating(ixI^S)
     double precision :: photon_tiring(ixI^S)
 
-    integer :: idir
+    integer :: idir, i
 
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
@@ -129,7 +127,7 @@ module mod_fld
             + qdt * radiation_force(ixI^S,idir)
       end do
 
-      !if(energy .and. .not.block%e_is_internal) then
+      if(energy .and. .not.block%e_is_internal) then
 
         !> Get pressure
         call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
@@ -142,26 +140,37 @@ module mod_fld
         !> Heating = c kappa E_rad
         radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
 
-        print*, 'Energy Before', w(5,5,iw_e)
+        !> Write energy to file
+        if (it == 0) open(1,file='energy_out6')
+        write(1,222) it,global_time,w(5,5,iw_e)
+        if (it == it_max) close(1)
+        222 format(i8,2e15.5E3)
+
+        ! print*, 'dt', dt
 
         !> Energy equation source terms
         w(ixO^S,iw_e) = w(ixO^S,iw_e) &
            + qdt * radiation_heating(ixO^S) &
            - qdt * radiation_cooling(ixO^S)
 
-        print*, 'radiation_heating', qdt * radiation_heating(5,5)
-        print*, 'radiation_cooling', qdt * radiation_cooling(5,5)
-        print*, 'Energy After', w(5,5,iw_e)
-        print*, '###################################################################'
+        ! print*, 'fld_kappa*wCT(ixO^S,iw_rho)',fld_kappa*wCT(5,5,iw_rho)
+        !
+        ! print*, 'fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)', fld_speedofligt_0*fld_kappa*wCT(5,5,iw_rho)
+        ! print*, 'qdt * radiation_heating(ixO^S)', qdt * radiation_heating(5,5)
+        !
+        ! print*, '4*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0', 4*fld_kappa*wCT(5,5,iw_rho)*fld_sigma_0
+        ! print*, 'qdt * radiation_cooling(ixO^S)', qdt * radiation_cooling(5,5)
 
-      !end if
+        print*,  it,global_time,w(5,5,iw_e)
+
+      end if
 
       !> Photon tiring
       call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
       photon_tiring(ixO^S) = div_v(ixO^S)/rad_pressure(ixO^S)
 
       !> Radiation Energy source term
-      w(ixO^S,iw_e) = w(ixO^S,iw_e) &
+      w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
          - qdt * photon_tiring(ixO^S) &
          - qdt * radiation_heating(ixO^S) &
          + qdt * radiation_cooling(ixO^S)
@@ -199,7 +208,6 @@ module mod_fld
     fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
 
   end subroutine fld_get_fluxlimiter
-
 
 
   !> Calculate Radiation Flux

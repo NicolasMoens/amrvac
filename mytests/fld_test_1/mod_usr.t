@@ -17,8 +17,8 @@ contains
     use mod_constants
 
     double precision :: rho_0 = 1.d-7
-    double precision :: t_0 = 1.d-11
-    double precision :: e_0 = 1.d10
+    double precision :: t_0 = 1.d-12
+    double precision :: e_0 = 1.d12
 
     call set_coordinate_system("Cartesian_2D")
 
@@ -77,8 +77,8 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     w(ixG^S, rho_) = 1.d0
     w(ixG^S, mom(:)) = zero
-    w(ixG^S, e_) = 1.d0
-    w(ixG^S,r_e) = 1.d2
+    w(ixG^S, e_) = 1.d-2
+    w(ixG^S,r_e) = 1.d0
 
   end subroutine initial_conditions
 
@@ -108,7 +108,7 @@ end subroutine initglobaldata_usr
 
     w(ixI^S,rho_) = 1.d0
     w(ixI^S,mom(:)) = zero
-    w(ixI^S,r_e) = 1.d2
+    w(ixI^S,r_e) = 1.d0
 
     !w(ixI^S,e_) = w(6,6,e_)
 

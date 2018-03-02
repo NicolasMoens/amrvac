@@ -785,7 +785,7 @@ contains
 
     !> NICOLAS MOENS
     if(hd_fld) then
-      !print*, "CALLING FLD_ADD_SOURCE", w(5,5,iw_mom(1)), qsourcesplit, active
+      !print*, "CALLING FLD_ADD_SOURCE", w(5,5,iw_e)
       call fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
            hd_energy,qsourcesplit,active)
     end if

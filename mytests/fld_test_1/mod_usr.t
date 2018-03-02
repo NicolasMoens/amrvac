@@ -14,7 +14,18 @@ contains
     use mod_global_parameters
     use mod_usr_methods
 
+    use mod_constants
+
+    double precision :: rho_0 = 1.d-7
+    double precision :: t_0 = 1.d-11
+    double precision :: e_0 = 1.d10
+
     call set_coordinate_system("Cartesian_2D")
+
+    !Fix dimensionless stuff here
+    unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
+    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
+    unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
 
     ! Initialize units
     usr_set_parameters => initglobaldata_usr
@@ -36,7 +47,9 @@ contains
     print*, 'unit_temperature', unit_temperature
     print*, 'unit_length', unit_length
     print*, 'unit_density', unit_density
-    !print*, 'unit_energy', unit_energy
+    print*, 'unit_numberdensity', unit_numberdensity
+    print*, 'unit_velocity', unit_velocity
+    print*, 'unit_pressure', unit_pressure
     print*, '================================================================'
 
   end subroutine usr_init
@@ -45,17 +58,7 @@ contains
 
 subroutine initglobaldata_usr
   use mod_global_parameters
-  use mod_constants
 
-  double precision :: rho_0 = 1d-7
-  double precision :: t_0 = 1d-11
-  double precision :: e_0 = 1d10
-
-  !Fix dimensionless stuff here
-  !unit_length        = sqrt(e_0/rho_0)*t_0                                        ! cm
-  unit_time = t_0
-  unit_numberdensity = rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
-  unit_temperature   = unit_numberdensity*e_0/(hd_gamma*kB_cgs)                   ! K
 
 end subroutine initglobaldata_usr
 
@@ -71,17 +74,11 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixG^S, ndim)
     double precision, intent(inout) :: w(ixG^S, nw)
 
-    double precision :: temperature(ixG^S)
-    double precision :: int_energy(ixG^S)
-
-    integer :: i
-
     ! Set initial values for w
-    w(ixG^S, rho_) = 1d0
-    w(ixG^S, mom(1)) = zero
-    w(ixG^S, mom(2)) = zero
-    w(ixG^S, e_) = 1d0
-    w(ixG^S,r_e) = 1d2
+    w(ixG^S, rho_) = 1.d0
+    w(ixG^S, mom(:)) = zero
+    w(ixG^S, e_) = 1.d0
+    w(ixG^S,r_e) = 1.d2
 
   end subroutine initial_conditions
 
@@ -109,11 +106,11 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1d0
+    w(ixI^S,rho_) = 1.d0
     w(ixI^S,mom(:)) = zero
-    w(ixI^S,r_e) = 1d2
+    w(ixI^S,r_e) = 1.d2
 
-    print*, 'WHYSIS THIS NOT WORKING', w(50,50,e_)
+    !w(ixI^S,e_) = w(6,6,e_)
 
   end subroutine constant_r_e
 

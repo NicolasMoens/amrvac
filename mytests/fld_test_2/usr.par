@@ -15,15 +15,14 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   !dtsave_dat     = 2.d-4
-   !ditsave_dat     = 100000
-   !ditsave_log     = 100000
+   ditsave_dat     = 1
+   ditsave_log     = 1
 /
 
  &stoplist
    !time_max = 2.0d-3
-   dtmin = 1.0d-4
-   it_max = 1000
+   dtmin = 1.0d-10
+   it_max = 10
 /
 
  &methodlist
@@ -36,10 +35,10 @@
 
 &boundlist
   nghostcells  =  2
-  typeboundary_min1 = 5*'periodic'
-  typeboundary_max1 = 5*'periodic'
-  typeboundary_min2 = 5*'periodic'
-  typeboundary_max2 = 5*'periodic'
+  typeboundary_min1 = 5*'cont'
+  typeboundary_max1 = 5*'cont'
+  typeboundary_min2 = 5*'cont'
+  typeboundary_max2 = 5*'cont'
   typeghostfill= 'copy'
   internalboundary = T
 /
@@ -61,7 +60,7 @@
 
  &paramlist
   courantpar       = 0.6d0
-  !dtpar = 1.d-12
+  dtpar = 1.d-5
  /
 
  &hd_list
@@ -74,5 +73,5 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 20
+  fld_numdt = 100
  /

@@ -115,8 +115,7 @@ module mod_fld
     integer :: idir, i
 
     !> Begin by evolving the radiation energy field
-    print*, "evolving rad_e"
-    call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
+    !call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
 
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
@@ -250,26 +249,32 @@ module mod_fld
     double precision :: E_m(ixI^S), E_n(ixI^S)
     double precision :: diag(ixI^S), bvec(ixI^S)
     double precision :: sub(ixI^S), sup(ixI^S)
-    double precision :: dw
+    double precision :: dw, delta_x
     integer m, j
 
     E_n(:,:) = w(:,:,iw_r_e)
     E_m(:,:) = w(:,:,iw_r_e)
 
+    !> WHY CAN'T I USE dx ?!?!?!?!?
+    delta_x = min( (x(ixImin1+1,1,1)-x(ixImin1,1,1)), (x(1,ixImin2+1,2)-x(1,ixImin2,2)) )
+
     do m = 1,w_max
       !> Set pseudotimestep
-      dw = minval(dx)/4.d0*(max(x(ixImax1,1,1)-x(ixImin1,1,1),x(1,ixImax2,2)-x(1,ixImin2,2))/minval(dx))**((m-1)/(w_max-1))
+      dw = delta_x/4.d0*(max(x(ixImax1,1,1)-x(ixImin1,1,1),x(1,ixImax2,2)-x(1,ixImin2,2))/delta_x)**((m-1)/(w_max-1))
 
       !> Setup matrix and vector for sweeping in direction 1
-      call make_matrix(x,w,dw,E_n,E_m,1,ixImax1,ixI^L, ixO^L,diag,sub,sup,bvec)
+      call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag,sub,sup,bvec)
       do j = 1,ixImax2
         call solve_tridiag(ixImax1,diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
+        print*, "E_m after", E_m(:,j)
       enddo
       !> Setup matrix and vector for sweeping in direction 2
-      call make_matrix(x,w,dw,E_n,E_m,2,ixImax2,ixI^L, ixO^L,diag,sub,sup,bvec)
+      call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L, ixO^L,diag,sub,sup,bvec)
       do j = 1,ixImax1
         call solve_tridiag(ixImax2, diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
+        print*, "E_m after", E_m(:,j)
       enddo
+      stop
     enddo
 
     w(:,:,iw_r_e) = E_m(:,:)
@@ -277,43 +282,8 @@ module mod_fld
   end subroutine Evolve_ADI
 
 
-  subroutine solve_tridiag(ixImax,diag,sub,sup,bvec,E_m)
-    use mod_global_parameters
-    implicit none
-    !	 a - sub-diagonal (means it is the diagonal below the main diagonal)
-    !	 b - the main diagonal
-    !	 c - sup-diagonal (means it is the diagonal above the main diagonal)
-    !	 d - right part
-    !	 x - the answer
-    !	 n - number of equations
 
-    integer, intent(in) :: ixImax
-    double precision, intent(in) :: diag(ixImax), bvec(ixImax)
-    double precision, intent(in) :: sub(ixImax), sup(ixImax)
-    double precision, intent(out) :: E_m(ixImax)
-    double precision :: cp(ixImax), dp(ixImax)
-    double precision :: m
-    integer :: i
-    ! initialize c-prime and d-prime
-    cp(1) = sup(1)/diag(1)
-    dp(1) = bvec(1)/diag(1)
-    ! solve for vectors c-prime and d-prime
-    do i = 2,ixImax-1
-      m = diag(i)-cp(i-1)*sub(i)
-      cp(i) = sup(i)/m
-      dp(i) = (bvec(i)-dp(i-1)*sub(i))/m
-    enddo
-    ! initialize x
-    E_m(ixImax-1) = dp(ixImax-1)
-    ! solve for x from the vectors c-prime and d-prime
-    do i = ixImax-2, 1, -1
-      E_m(i) = dp(i)-cp(i)*E_m(i+1)
-    end do
-
-  end subroutine solve_tridiag
-
-
-  subroutine make_matrix(x,w,dw,E_n, E_m, sweepdir,ixImax,ixI^L, ixO^L,diag,sub,sup, bvec)
+  subroutine make_matrix(x,w,dw,E_m, E_n, sweepdir,ixImax,ixI^L, ixO^L,diag,sub,sup, bvec)
     use mod_global_parameters
 
     integer, intent(in) :: sweepdir, ixImax
@@ -323,7 +293,7 @@ module mod_fld
     double precision, intent(in) :: E_n(ixI^S), E_m(ixI^S)
     double precision, intent(out):: diag(ixI^S),sub(ixI^S),sup(ixI^S),bvec(ixI^S)
     double precision :: fld_lambda(ixI^S), fld_R(ixI^S)
-    double precision :: D_center(ixI^S), D(ixI^S,1:ndim), h, beta(ixImax)
+    double precision :: D_center(ixI^S), D(ixI^S,1:ndim), h, beta(ixImax), delta_x
     double precision :: grad_r_e(ixI^S, 1:ndim)
     integer :: idir,i,j
 
@@ -350,23 +320,22 @@ module mod_fld
     D(1,1,2) = D(2,2,2)
 
     !calculate h
-    h = dw/(two*minval(dx)**two)
-    print*, dx
+    delta_x = min( (x(ixImin1+1,1,1)-x(ixImin1,1,1)), (x(1,ixImin2+1,2)-x(1,ixImin2,2)) )
+    h = dw/(two*delta_x**two)
 
+    !> Matrix depends on sweepingdirection
     if (sweepdir == 1) then
       !calculate matrix for sweeping in 1-direction
       do j = 1,ixImax2
        !calculate beta
        do i = 1,ixImax1-1
          beta(i) = one + dw/(two*dt) + h*(D(i+1,j,1))
-         print*, i, dw, two, dt, ixImax1, h
        enddo
-       stop
 
        do i = 1,ixImax1-1
          diag(i,j) = beta(i)
          sub(i,j) = -h*D(i+1,j,1)
-         sub(i,j) = -h*D(i+1,j,1)
+         sup(i,j) = -h*D(i+1,j,1)
          bvec(i,j) = (1 + h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
          + h*D(i,j+1,2)*E_m(i,j+1) + h*D(i,j,2)*E_m(i,j-1) + dw/(2*dt)*E_n(i,j)
        enddo
@@ -387,7 +356,7 @@ module mod_fld
        do i = 1,ixImax2-1
          diag(i,j) = beta(i)
          sub(i,j) = -h*D(j,i+1,2)
-         sub(i,j) = -h*D(j,i+1,2)
+         sup(i,j) = -h*D(j,i+1,2)
 
          bvec(i,j) = (1 + h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
          + h*D(j+1,i,1)*E_m(j+1,i) + h*D(j,i,1)*E_m(j-1,i) + dw/(2*dt)*E_n(j,i)
@@ -403,6 +372,37 @@ module mod_fld
     endif
 
   end subroutine make_matrix
+
+
+  subroutine solve_tridiag(ixImax,diag,sub,sup,bvec,E_m)
+    use mod_global_parameters
+    implicit none
+
+    integer, intent(in) :: ixImax
+    double precision, intent(in) :: diag(ixImax), bvec(ixImax)
+    double precision, intent(in) :: sub(ixImax), sup(ixImax)
+    double precision, intent(out) :: E_m(ixImax)
+    double precision :: cp(ixImax), dp(ixImax)
+    double precision :: m
+    integer :: i
+    ! initialize c-prime and d-prime
+    cp(1) = sup(1)/diag(1)
+    dp(1) = bvec(1)/diag(1)
+    ! solve for vectors c-prime and d-prime
+    do i = 2,ixImax-1
+      m = diag(i)-cp(i-1)*sub(i)
+      cp(i) = sup(i)/m
+      dp(i) = (bvec(i)-dp(i-1)*sub(i))/m
+    enddo
+    ! initialize x
+    E_m(ixImax-1) = dp(ixImax-1)
+    ! solve for x from the vectors c-prime and d-prime
+    do i = ixImax-2, 1, -1
+      E_m(i) = dp(i)-cp(i)*E_m(i+1)
+    end do
+
+  end subroutine solve_tridiag
+
 
 
   subroutine grad(q,ixI^L,ix^L,idir,x,gradq)

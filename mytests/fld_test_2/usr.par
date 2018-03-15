@@ -46,10 +46,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 4
-   domain_nx2         = 4
-   block_nx1          = 4
-   block_nx2          = 4
+   domain_nx1         = 16
+   domain_nx2         = 16
+   block_nx1          = 16
+   block_nx2          = 16
    xprobmin1       =  -0.5d0
    xprobmax1       =  0.5d0
    xprobmin2       =  0.0d0
@@ -71,9 +71,8 @@
  /
 
  &fld_list
-  !fld_kappa = 0.34d0
-  fld_kappa = 0.4d0
+  fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_dt = 0.02
+  fld_numdt = 20
  /

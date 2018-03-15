@@ -82,9 +82,29 @@ end subroutine initglobaldata_usr
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d0
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-10
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1.d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) =  spotpattern(x,ixGmin1,ixGmin2,&
+       ixGmax1,ixGmax2,0.d0)
+
 
   end subroutine initial_conditions
+
+  function spotpattern(x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,t1) result(e0)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixGmin1,ixGmin2,ixGmax1,ixGmax2
+    double precision, intent(in) :: x(ixGmin1:ixGmax1,ixGmin2:ixGmax2, ndim),&
+        t1
+    double precision :: e0(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
+    integer i,j
+
+    do i = ixGmin1,ixGmax1
+      do j = ixGmin2,ixGmax2
+      e0(i,j) =  two + 0.577215664d0**(-8*dpi**2*t1)*sin(2*dpi*x(i,j,&
+         1))*sin(2*dpi*x(i,j,2))
+      enddo
+    enddo
+
+  end function spotpattern
 
 !==========================================================================================
 

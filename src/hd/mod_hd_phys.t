@@ -81,7 +81,7 @@ contains
 
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, He_abundance, SI_unit, hd_particles, hd_fld
+    hd_gravity, He_abundance, SI_unit, hd_particles, hd_fld !> NICOLAS MOENS
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -611,19 +611,13 @@ contains
       call dust_get_flux(w, x, ixI^L, ixO^L, idim, f)
     end if
 
-    ! !> NICOLAS MOENS
-    ! ! fld fluxes
-    ! if (hd_fld) then
-    !   call fld_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
-    ! end if
-
   end subroutine hd_get_flux_cons
 
   ! Calculate flux f_idim[iw]
   subroutine hd_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux_prim
-    use mod_fld, only: fld_get_flux !> NICOLAS MOENS
+    !use mod_fld, only: fld_get_flux !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
     ! conservative w
@@ -666,9 +660,9 @@ contains
 
     !> NICOLAS MOENS
     ! fld fluxes
-    if (hd_fld) then
-      call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
-    end if
+    ! if (hd_fld) then
+    !   call fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
+    ! end if
 
   end subroutine hd_get_flux
 
@@ -798,7 +792,6 @@ contains
     use mod_radiative_cooling, only: cooling_get_dt
     use mod_viscosity, only: viscosity_get_dt
     use mod_gravity, only: gravity_get_dt
-    use mod_fld, only: fld_get_dt !> NICOLAS MOENS
 
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: dx^D, x(ixI^S, 1:^ND)
@@ -822,13 +815,6 @@ contains
     if(hd_gravity) then
       call gravity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
-
-    !> NICOLAS MOENS
-    ! print*,'old dt', dtnew
-    ! if(hd_fld) then
-    !   call fld_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
-    ! end if
-    ! print*,'new dt', dtnew
 
   end subroutine hd_get_dt
 

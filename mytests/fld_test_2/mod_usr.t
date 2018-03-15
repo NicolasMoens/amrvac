@@ -23,10 +23,9 @@ contains
     call set_coordinate_system("Cartesian_2D")
 
     !Fix dimensionless stuff here
-    unit_length        = dsqrt(e_0/rho_0)*t_0 !cm
-    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm-3,cm-3
-    unit_temperature   = e_0/(unit_numberdensity*(2.d0+&
-       3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
+    unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
+    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
+    unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
 
     ! Initialize units
     usr_set_parameters => initglobaldata_usr
@@ -66,25 +65,39 @@ end subroutine initglobaldata_usr
 !==========================================================================================
 
   !> A routine for specifying initial conditions
-  subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
-     ixmax1,ixmax2, w, x)
+  subroutine initial_conditions(ixG^L, ix^L, w, x)
     use mod_global_parameters
     use mod_constants
     use mod_hd_phys, only: hd_get_pthermal
 
-    integer, intent(in)             :: ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,&
-       ixmin2,ixmax1,ixmax2
-    double precision, intent(in)    :: x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,&
-        ndim)
-    double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, nw)
+    integer, intent(in)             :: ixG^L, ix^L
+    double precision, intent(in)    :: x(ixG^S, ndim)
+    double precision, intent(inout) :: w(ixG^S, nw)
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d0
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-10
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1.d0
+    w(ixG^S, rho_) = 1.d0
+    w(ixG^S, mom(:)) = zero
+    w(ixG^S, e_) = 1.d-10
+    w(ixG^S,r_e) =  spotpattern(x,ixG^L,0.d0)
+
 
   end subroutine initial_conditions
+
+  function spotpattern(x,ixG^L,t1) result(e0)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixG^L
+    double precision, intent(in) :: x(ixG^S, ndim), t1
+    double precision :: e0(ixG^S)
+    integer i,j
+
+    do i = ixGmin1,ixGmax1
+      do j = ixGmin2,ixGmax2
+      e0(i,j) =  two + 0.577215664d0**(-8*dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
+      enddo
+    enddo
+
+  end function spotpattern
 
 !==========================================================================================
 
@@ -103,19 +116,16 @@ end subroutine initglobaldata_usr
   !> which can be used to identify the internal boundary region location.
   !> Its effect should always be local as it acts on the mesh.
 
-  subroutine constant_r_e(level,qt,ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
-     ixOmin2,ixOmax1,ixOmax2,w,x)
+  subroutine constant_r_e(level,qt,ixI^L,ixO^L,w,x)
     use mod_global_parameters
-    integer, intent(in)             :: ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
-       ixOmin2,ixOmax1,ixOmax2,level
+    integer, intent(in)             :: ixI^L,ixO^L,level
     double precision, intent(in)    :: qt
-    double precision, intent(inout) :: w(ixImin1:ixImax1,ixImin2:ixImax2,1:nw)
-    double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
-       1:ndim)
+    double precision, intent(inout) :: w(ixI^S,1:nw)
+    double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d0
-    w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
-    w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1.d0
+    w(ixI^S,rho_) = 1.d0
+    w(ixI^S,mom(:)) = zero
+    w(ixI^S,r_e) = 1.d0
 
     print*, it
 
@@ -123,8 +133,7 @@ end subroutine initglobaldata_usr
 
 !==========================================================================================
 
-subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
-   ixOmax1,ixOmax2,w,x,normconv)
+subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
 ! this subroutine can be used in convert, to add auxiliary variables to the
 ! converted output file, for further analysis using tecplot, paraview, ....
 ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
@@ -134,34 +143,21 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
   use mod_global_parameters
   use mod_physics
 
-  integer, intent(in)                :: ixImin1,ixImin2,ixImax1,ixImax2,&
-     ixOmin1,ixOmin2,ixOmax1,ixOmax2
-  double precision, intent(in)       :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
-     1:ndim)
-  double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
-     nw+nwauxio)
+  integer, intent(in)                :: ixI^L,ixO^L
+  double precision, intent(in)       :: x(ixI^S,1:ndim)
+  double precision                   :: w(ixI^S,nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
 
-  double precision                   :: rad_flux(ixImin1:ixImax1,&
-     ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
-      fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
-     ixImin2:ixImax2)
+  double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
 
-  call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_flux, rad_pressure)
-  call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
-     ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
+  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+  call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,1)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
+  w(ixO^S,nw+1)=rad_flux(ixO^S,1)
+  w(ixO^S,nw+2)=rad_flux(ixO^S,2)
+  w(ixO^S,nw+3)=rad_pressure(ixO^S)
+  w(ixO^S,nw+4)=fld_lambda(ixO^S)
+  w(ixO^S,nw+5)=fld_R(ixO^S)
 
 end subroutine specialvar_output
 

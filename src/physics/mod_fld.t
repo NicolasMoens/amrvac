@@ -263,6 +263,10 @@ module mod_fld
     E_n(ixI^S) = w(ixI^S,iw_r_e)
     E_m(ixI^S) = w(ixI^S,iw_r_e)
 
+    print*, "##########################"
+    print*, E_m(12,:)
+    print*, "##########################"
+
     !> WHY CAN'T I USE dx ?!?!?!?!?
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
 
@@ -275,21 +279,26 @@ module mod_fld
       do j = ixImin2,ixImax2
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
       enddo
-      !call ADI_boundary_conditions(ixI^L,E_m)
+      call ADI_boundary_conditions(ixI^L,E_m)
+
+      print*, it, m
+      print*, E_m(12,:)
 
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L, ixO^L,diag,sub,sup,bvec)
       do j = ixImin1,ixImax1
         call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2, diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
       enddo
-      !call ADI_boundary_conditions(ixI^L,E_m)
+      call ADI_boundary_conditions(ixI^L,E_m)
+
+      print*, it, m
+      print*, E_m(12,:)
 
     enddo
 
     w(ixO^S,iw_r_e) = E_m(ixO^S)
 
   end subroutine Evolve_ADI
-
 
 
   subroutine make_matrix(x,w,dw,E_m,E_n,sweepdir,ixImax,ixI^L,ixO^L,diag,sub,sup,bvec)
@@ -328,14 +337,14 @@ module mod_fld
     !> Matrix depends on sweepingdirection
     if (sweepdir == 1) then
       !calculate matrix for sweeping in 1-direction
-      do j = ixImin2+1,ixImax2-1
+      do j = ixImin2,ixImax2
        !calculate beta
-       do i = ixImin1,ixImax1-1
+       do i = ixOmin1,ixOmax1
          beta(i) = one + dw/(two*dt) + h*(D(i+1,j,1)+D(i,j,1))
        enddo
-       beta(ixImax1) = beta(ixImax1-1)
+       beta(ixOmax1) = beta(ixOmax1-1)
 
-       do i = ixImin1,ixImax1
+       do i = ixOmin1,ixOmax1
          diag(i,j) = beta(i)
          sub(i+1,j) = -h*D(i+1,j,1)
          sup(i,j) = -h*D(i+1,j,1)
@@ -344,23 +353,23 @@ module mod_fld
        enddo
 
        !> Boundary conditions on matrix
-       sub(ixImin1,j) = zero
-       sup(ixImax1,j) = zero
-       diag(ixImin1,j) = beta(ixImin1) - h*D(ixImin1,j,1)
-       diag(ixImax1,j) = beta(ixImax1) - h*D(ixImax1,j,1)
+       sub(ixOmin1,j) = zero
+       sup(ixOmax1,j) = zero
+       diag(ixOmin1,j) = beta(ixOmin1) - h*D(ixOmin1,j,1)
+       diag(ixOmax1,j) = beta(ixOmax1) - h*D(ixOmax1,j,1)
 
       enddo
 
     elseif ( sweepdir == 2 ) then
       !calculate matrix for sweeping in 2-direction
-      do j = ixImin1+1,ixImax1-1
+      do j = ixImin1,ixImax1
        !calculate beta
-       do i = ixImin2,ixImax2-1
+       do i = ixOmin2,ixOmax2
          beta(i) = one + dw/(two*dt) + h*(D(j,i+1,2)+D(j,i,2))
        enddo
-       beta(ixImax2) = beta(ixImax2-1)
+       beta(ixOmax2) = beta(ixOmax2-1)
 
-       do i = ixImin2,ixImax2
+       do i = ixOmin2,ixOmax2
          diag(i,j) = beta(i)
          sub(i+1,j) = -h*D(j,i+1,2)
          sup(i,j) = -h*D(j,i+1,2)
@@ -369,10 +378,10 @@ module mod_fld
        enddo
 
        !> Boundary conditions on matrix
-       sub(ixImin2,j) = zero
-       sup(ixImax2,j) = zero
-       diag(ixImin2,j) = beta(ixImin2) - h*D(j,ixImin2,2)
-       diag(ixImax2,j) = beta(ixImax2) - h*D(j,ixImax2,2)
+       sub(ixOmin2,j) = zero
+       sup(ixOmax2,j) = zero
+       diag(ixOmin2,j) = beta(ixOmin2) - h*D(j,ixOmin2,2)
+       diag(ixOmax2,j) = beta(ixOmax2) - h*D(j,ixOmax2,2)
 
       enddo
     else
@@ -391,26 +400,24 @@ module mod_fld
     double precision, intent(in) :: sub(ixImax), sup(ixImax)
     double precision, intent(out) :: E_m(ixImax)
     double precision :: cp(ixImax), dp(ixImax)
-    double precision :: m
     integer :: i
 
     ! initialize c-prime and d-prime
-    cp(ixImin) = sup(ixImin)/diag(ixImin)
-    dp(ixImin) = bvec(ixImin)/diag(ixImin)
+    cp(ixOmin) = sup(ixOmin)/diag(ixOmin)
+    dp(ixOmin) = bvec(ixOmin)/diag(ixOmin)
 
     ! solve for vectors c-prime and d-prime
-    do i = ixImin+1 ,ixImax-1
-      m = diag(i)-cp(i-1)*sub(i)
-      cp(i) = sup(i)/m
-      dp(i) = (bvec(i)-dp(i-1)*sub(i))/m
+    do i = ixOmin+1 ,ixOmax-1
+      cp(i) = sup(i)/( diag(i)-cp(i-1)*sub(i))
+      dp(i) = (bvec(i)-dp(i-1)*sub(i))/(diag(i)-cp(i-1)*sub(i))
     enddo
-    dp(ixImax) = (bvec(ixImax)-dp(ixImax-1)*sub(ixImax))/(diag(i)-cp(i-1)*sub(i))
+    dp(ixOmax) = (bvec(ixOmax)-dp(ixOmax-1)*sub(ixOmax))/(diag(ixOmax)-cp(ixOmax-1)*sub(ixOmax))
 
     ! initialize x
-    E_m(ixImax) = dp(ixImax)
+    E_m(ixOmax) = dp(ixOmax)
 
     ! solve for x from the vectors c-prime and d-prime
-    do i = ixImax-1, ixImin, -1
+    do i = ixOmax-1, ixOmin, -1
       E_m(i) = dp(i)-cp(i)*E_m(i+1)
     end do
 

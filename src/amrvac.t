@@ -170,7 +170,6 @@ contains
 
        ! set time step
        call setdt()
-       print*, dt
 
        ! Optionally call a user method that can modify the grid variables at the
        ! beginning of a time step
@@ -211,9 +210,7 @@ contains
        if (it>=it_max .or. global_time>=time_max) exit time_evol
 
        ! solving equations
-       !print*, "BEFORE CALLING advance"
        call advance(it)
-       !print*, "AFTER CALLING advance"
 
        ! if met unphysical values, output the last good status and stop the run
        call MPI_ALLREDUCE(crash,crashall,1,MPI_LOGICAL,MPI_LOR,icomm,ierrmpi)

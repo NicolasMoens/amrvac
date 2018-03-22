@@ -114,56 +114,57 @@ module mod_fld
 
     integer :: idir, i
 
-    !> Begin by evolving the radiation energy field
-    !call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
-
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
 
-      !> Calculate the radiative flux using the FLD Approximation
-      call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+      !> Begin by evolving the radiation energy field
+      call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
 
-      do idir = 1,ndir
-        !> Radiation force = kappa*rho/c *Flux
-        radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
-
-        !> Momentum equation source term
-        w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
-            + qdt * radiation_force(ixI^S,idir)
-      enddo
-
-      !> Get pressure
-      call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
-
-      !> calc Temperature as p/rho
-      temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
-
-      !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
-      radiation_cooling(ixO^S) = 4*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
-      !> Heating = c kappa E_rad
-      radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
-
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out1')
-      ! write(1,222) it,global_time,w(5,5,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
-
-      !> Energy equation source terms
-      w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-         + qdt * radiation_heating(ixO^S) &
-         - qdt * radiation_cooling(ixO^S)
-
-      !> Photon tiring
-      call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
-      photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
-
-      !> Radiation Energy source term
-      w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-         - qdt * radiation_heating(ixO^S) &
-         + qdt * radiation_cooling(ixO^S)
-         !- qdt * photon_tiring(ixO^S) &
+      ! !> Calculate the radiative flux using the FLD Approximation
+      ! call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+      !
+      ! do idir = 1,ndir
+      !   !> Radiation force = kappa*rho/c *Flux
+      !   radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
+      !
+      !   !> Momentum equation source term
+      !   w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
+      !       + qdt * radiation_force(ixI^S,idir)
+      ! enddo
+      !
+      ! !> Get pressure
+      ! call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
+      !
+      ! !> calc Temperature as p/rho
+      ! temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
+      ! ! temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) ????
+      !
+      ! !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
+      ! radiation_cooling(ixO^S) = 4*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
+      ! !> Heating = c kappa E_rad
+      ! radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
+      !
+      ! ! !> Write energy to file
+      ! ! if (it == 0) open(1,file='energy_out1')
+      ! ! write(1,222) it,global_time,w(5,5,iw_e)
+      ! ! if (it == it_max) close(1)
+      ! ! 222 format(i8,2e15.5E3)
+      !
+      ! !> Energy equation source terms
+      ! w(ixO^S,iw_e) = w(ixO^S,iw_e) &
+      !    + qdt * radiation_heating(ixO^S) &
+      !    - qdt * radiation_cooling(ixO^S)
+      !
+      ! !> Photon tiring
+      ! call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
+      ! photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
+      !
+      ! !> Radiation Energy source term
+      ! w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+      !    - qdt * radiation_heating(ixO^S) &
+      !    + qdt * radiation_cooling(ixO^S)
+      !    !- qdt * photon_tiring(ixO^S) &
 
     end if
 
@@ -209,7 +210,7 @@ module mod_fld
     double precision, intent(in) :: w(ixI^S, nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out):: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
-    double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S)
+    double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S), f(ixI^S)
     double precision :: grad_r_e(ixI^S, 1:ndim)
     integer :: idir
 
@@ -230,12 +231,19 @@ module mod_fld
     !> Calculate the Flux using the fld closure relation
     !> F = -c*lambda/(kappa*rho) *grad E
     do idir = 1,ndir
-      rad_flux(ixI^S, idir) = -const_c/unit_velocity*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho)) *grad_r_e(ixI^S,idir)
+      rad_flux(ixI^S, idir) = -fld_speedofligt_0*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho)) *grad_r_e(ixI^S,idir)
     end do
 
     !> Calculate radiation pressure
     !> P = (lambda + lambda^2 R^2)*E
-    rad_pressure(ixI^S) = (fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2) * w(ixI^S, iw_r_e)
+    f(ixI^S) = fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2
+    f(ixI^S) = one/two*(one-f(ixI^S))*w(ixI^S,iw_r_e)*fld_speedofligt_0/(4*dpi)&
+    +one/two*(3*f(ixI^S) - 1)
+    rad_pressure(ixI^S) = f(ixI^S) * w(ixI^S, iw_r_e)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!  ^   THIS IS NOT YET CORRECT   ^  !!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   end subroutine fld_get_radflux
 
@@ -250,40 +258,41 @@ module mod_fld
     double precision :: diag(ixI^S), bvec(ixI^S)
     double precision :: sub(ixI^S), sup(ixI^S)
     double precision :: dw, delta_x
-    integer m, j
+    integer g, h, m, j
 
-    E_n(:,:) = w(:,:,iw_r_e)
-    E_m(:,:) = w(:,:,iw_r_e)
+    E_n(ixI^S) = w(ixI^S,iw_r_e)
+    E_m(ixI^S) = w(ixI^S,iw_r_e)
 
     !> WHY CAN'T I USE dx ?!?!?!?!?
-    delta_x = min( (x(ixImin1+1,1,1)-x(ixImin1,1,1)), (x(1,ixImin2+1,2)-x(1,ixImin2,2)) )
+    delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
 
     do m = 1,w_max
       !> Set pseudotimestep
-      dw = delta_x/4.d0*(max(x(ixImax1,1,1)-x(ixImin1,1,1),x(1,ixImax2,2)-x(1,ixImin2,2))/delta_x)**((m-1)/(w_max-1))
+      dw = delta_x/4.d0*(max(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-1)/(w_max-1))
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag,sub,sup,bvec)
-      do j = 1,ixImax2
-        call solve_tridiag(ixImax1,diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
-        print*, "E_m after", E_m(:,j)
+      do j = ixImin2,ixImax2
+        call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
       enddo
+      !call ADI_boundary_conditions(ixI^L,E_m)
+
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L, ixO^L,diag,sub,sup,bvec)
-      do j = 1,ixImax1
-        call solve_tridiag(ixImax2, diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
-        print*, "E_m after", E_m(:,j)
+      do j = ixImin1,ixImax1
+        call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2, diag(:,j),sub(:,j),sup(:,j),bvec(:,j),E_m(:,j))
       enddo
-      stop
+      !call ADI_boundary_conditions(ixI^L,E_m)
+
     enddo
 
-    w(:,:,iw_r_e) = E_m(:,:)
+    w(ixO^S,iw_r_e) = E_m(ixO^S)
 
   end subroutine Evolve_ADI
 
 
 
-  subroutine make_matrix(x,w,dw,E_m, E_n, sweepdir,ixImax,ixI^L, ixO^L,diag,sub,sup, bvec)
+  subroutine make_matrix(x,w,dw,E_m,E_n,sweepdir,ixImax,ixI^L,ixO^L,diag,sub,sup,bvec)
     use mod_global_parameters
 
     integer, intent(in) :: sweepdir, ixImax
@@ -301,70 +310,69 @@ module mod_fld
     call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
     !calculate diffusion coefficient
-    D_center(:,:) = fld_speedofligt_0*fld_lambda(:,:)/(fld_kappa*w(:,:,iw_rho))
+    D_center(ixI^S) = fld_speedofligt_0*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho))
 
     !> Go from cell center to cell face
-    do i = 2, ixImax1
-    do j = 2, ixImax2
+    do i = ixImin1+1, ixImax1
+    do j = ixImin2+1, ixImax2
       D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/2.d0
       D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/2.d0
     enddo
     enddo
-
-    D(1,:,1) = D(2,:,1)
-    D(1,:,2) = D(2,:,2)
-    D(:,1,1) = D(:,2,1)
-    D(:,1,2) = D(:,2,2)
-
-    D(1,1,1) = D(2,2,1)
-    D(1,1,2) = D(2,2,2)
+    D(ixImin1,ixImin2,:) = D_center(ixImin1,ixImin2)
 
     !calculate h
-    delta_x = min( (x(ixImin1+1,1,1)-x(ixImin1,1,1)), (x(1,ixImin2+1,2)-x(1,ixImin2,2)) )
+    delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
     h = dw/(two*delta_x**two)
 
     !> Matrix depends on sweepingdirection
     if (sweepdir == 1) then
       !calculate matrix for sweeping in 1-direction
-      do j = 1,ixImax2
+      do j = ixImin2+1,ixImax2-1
        !calculate beta
-       do i = 1,ixImax1-1
-         beta(i) = one + dw/(two*dt) + h*(D(i+1,j,1))
+       do i = ixImin1,ixImax1-1
+         beta(i) = one + dw/(two*dt) + h*(D(i+1,j,1)+D(i,j,1))
        enddo
+       beta(ixImax1) = beta(ixImax1-1)
 
-       do i = 1,ixImax1-1
+       do i = ixImin1,ixImax1
          diag(i,j) = beta(i)
-         sub(i,j) = -h*D(i+1,j,1)
+         sub(i+1,j) = -h*D(i+1,j,1)
          sup(i,j) = -h*D(i+1,j,1)
          bvec(i,j) = (1 + h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
          + h*D(i,j+1,2)*E_m(i,j+1) + h*D(i,j,2)*E_m(i,j-1) + dw/(2*dt)*E_n(i,j)
        enddo
 
        !> Boundary conditions on matrix
-       diag(1,j) = beta(1) - h*D(1,j,1)
-       diag(ixImax1-1,j) = beta(ixImax1-1) - h*D(ixImax1,j,1)
+       sub(ixImin1,j) = zero
+       sup(ixImax1,j) = zero
+       diag(ixImin1,j) = beta(ixImin1) - h*D(ixImin1,j,1)
+       diag(ixImax1,j) = beta(ixImax1) - h*D(ixImax1,j,1)
 
       enddo
+
     elseif ( sweepdir == 2 ) then
       !calculate matrix for sweeping in 2-direction
-      do j = 1,ixImax1
+      do j = ixImin1+1,ixImax1-1
        !calculate beta
-       do i = 1,ixImax2-1
-         beta(i) = one + dw/(two*dt) + h*(D(j,i+1,2))
+       do i = ixImin2,ixImax2-1
+         beta(i) = one + dw/(two*dt) + h*(D(j,i+1,2)+D(j,i,2))
        enddo
+       beta(ixImax2) = beta(ixImax2-1)
 
-       do i = 1,ixImax2-1
+       do i = ixImin2,ixImax2
          diag(i,j) = beta(i)
-         sub(i,j) = -h*D(j,i+1,2)
+         sub(i+1,j) = -h*D(j,i+1,2)
          sup(i,j) = -h*D(j,i+1,2)
-
          bvec(i,j) = (1 + h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
          + h*D(j+1,i,1)*E_m(j+1,i) + h*D(j,i,1)*E_m(j-1,i) + dw/(2*dt)*E_n(j,i)
        enddo
 
        !> Boundary conditions on matrix
-       diag(1,j) = beta(1) - h*D(j,1,2)
-       diag(ixImax2-1,j) = beta(ixImax2-1) - h*D(j,ixImax2,2)
+       sub(ixImin2,j) = zero
+       sup(ixImax2,j) = zero
+       diag(ixImin2,j) = beta(ixImin2) - h*D(j,ixImin2,2)
+       diag(ixImax2,j) = beta(ixImax2) - h*D(j,ixImax2,2)
 
       enddo
     else
@@ -374,35 +382,62 @@ module mod_fld
   end subroutine make_matrix
 
 
-  subroutine solve_tridiag(ixImax,diag,sub,sup,bvec,E_m)
+  subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,E_m)
     use mod_global_parameters
     implicit none
 
-    integer, intent(in) :: ixImax
+    integer, intent(in) :: ixOmin,ixOmax,ixImin,ixImax
     double precision, intent(in) :: diag(ixImax), bvec(ixImax)
     double precision, intent(in) :: sub(ixImax), sup(ixImax)
     double precision, intent(out) :: E_m(ixImax)
     double precision :: cp(ixImax), dp(ixImax)
     double precision :: m
     integer :: i
+
     ! initialize c-prime and d-prime
-    cp(1) = sup(1)/diag(1)
-    dp(1) = bvec(1)/diag(1)
+    cp(ixImin) = sup(ixImin)/diag(ixImin)
+    dp(ixImin) = bvec(ixImin)/diag(ixImin)
+
     ! solve for vectors c-prime and d-prime
-    do i = 2,ixImax-1
+    do i = ixImin+1 ,ixImax-1
       m = diag(i)-cp(i-1)*sub(i)
       cp(i) = sup(i)/m
       dp(i) = (bvec(i)-dp(i-1)*sub(i))/m
     enddo
+    dp(ixImax) = (bvec(ixImax)-dp(ixImax-1)*sub(ixImax))/(diag(i)-cp(i-1)*sub(i))
+
     ! initialize x
-    E_m(ixImax-1) = dp(ixImax-1)
+    E_m(ixImax) = dp(ixImax)
+
     ! solve for x from the vectors c-prime and d-prime
-    do i = ixImax-2, 1, -1
+    do i = ixImax-1, ixImin, -1
       E_m(i) = dp(i)-cp(i)*E_m(i+1)
     end do
 
   end subroutine solve_tridiag
 
+
+  subroutine ADI_boundary_conditions(ixI^L,E_m)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L
+    double precision, intent(inout) :: E_m(ixI^S)
+    integer g, h
+
+    do g = 0,nghostcells-1
+      E_m(ixImin1+g,:) = E_m(ixImin1+nghostcells,:)
+      E_m(ixImax1-g,:) = E_m(ixImax1-nghostcells,:)
+      E_m(:,ixImin2+g) = E_m(:,ixImin2+nghostcells)
+      E_m(:,ixImax2-g) = E_m(:,ixImax2-nghostcells)
+      do h = 1, nghostcells
+        E_m(ixImin1+g,ixImax2-h) = E_m(ixImin1+nghostcells,ixImax2-nghostcells)
+        E_m(ixImax1-g,ixImax2-h) = E_m(ixImax1-nghostcells,ixImax2-nghostcells)
+        E_m(ixImin1+g,ixImin2+h) = E_m(ixImin1+nghostcells,ixImin2+nghostcells)
+        E_m(ixImax1-g,ixImin2+h) = E_m(ixImax1-nghostcells,ixImin2+nghostcells)
+      end do
+    end do
+
+  end subroutine ADI_boundary_conditions
 
 
   subroutine grad(q,ixI^L,ix^L,idir,x,gradq)

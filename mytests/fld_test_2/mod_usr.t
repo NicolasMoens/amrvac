@@ -1,4 +1,4 @@
-!> This is a template for a new user problem
+  !> This is a template for a new user problem
 module mod_usr
 
   ! Include a physics module
@@ -16,16 +16,20 @@ contains
 
     use mod_constants
 
-    double precision :: rho_0 = 1.d3
-    double precision :: t_0 = 1.d-12
-    double precision :: e_0 = 1.d12
+     double precision :: rho_0 = 1.d0
+    ! double precision :: t_0 = 1.d-2
+    ! double precision :: e_0 = 1.d0
 
     call set_coordinate_system("Cartesian_2D")
 
-    !Fix dimensionless stuff here
-    unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
-    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
-    unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
+    ! !Fix dimensionless stuff here
+    ! unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
+    ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
+    ! unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
+
+    unit_velocity = const_c
+    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
+    unit_length = one/const_c
 
     ! Initialize units
     usr_set_parameters => initglobaldata_usr
@@ -34,7 +38,7 @@ contains
     usr_init_one_grid => initial_conditions
 
     ! Keep the radiative energy constant with internal bound
-    usr_internal_bc => constant_r_e
+    usr_internal_bc => constant_var
 
     ! Output routines
     usr_aux_output    => specialvar_output
@@ -75,7 +79,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixG^S, nw)
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1.d0
+    w(ixG^S, rho_) = 1.d3
     w(ixG^S, mom(:)) = zero
     w(ixG^S, e_) = 1.d0
     w(ixG^S,r_e) =  spotpattern(x,ixG^L,0.d0)
@@ -116,20 +120,18 @@ end subroutine initglobaldata_usr
   !> which can be used to identify the internal boundary region location.
   !> Its effect should always be local as it acts on the mesh.
 
-  subroutine constant_r_e(level,qt,ixI^L,ixO^L,w,x)
+  subroutine constant_var(level,qt,ixI^L,ixO^L,w,x)
     use mod_global_parameters
     integer, intent(in)             :: ixI^L,ixO^L,level
     double precision, intent(in)    :: qt
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1.d0
+    w(ixI^S,rho_) = 1.d3
     w(ixI^S,mom(:)) = zero
     w(ixI^S,e_) = 1.d0
 
-    print*, it
-
-  end subroutine constant_r_e
+  end subroutine constant_var
 
 !==========================================================================================
 

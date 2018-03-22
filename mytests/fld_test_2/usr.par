@@ -21,7 +21,7 @@
 
  &stoplist
    !time_max = 2.0d-3
-   dtmin = 1.0d-10
+   dtmin = 1.0d-20
    it_max = 10
 /
 
@@ -59,7 +59,7 @@
  /
 
  &paramlist
-  courantpar       = 0.6d0
+  !courantpar       = 0.6d0
   dtpar = 1.d-5
  /
 
@@ -73,5 +73,5 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 100
+  fld_numdt = 2
  /

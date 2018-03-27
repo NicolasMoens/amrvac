@@ -31,6 +31,7 @@ module mod_fld
     public :: fld_add_source
     public :: fld_get_radflux
     public :: fld_get_fluxlimiter
+    public :: fld_get_flux
 
   contains
 
@@ -84,7 +85,7 @@ module mod_fld
     fld_speedofligt_0 = const_c/unit_velocity
 
     !> Dimensionless Boltzman constante sigma
-    fld_sigma_0 = (5.67051d-5*unit_temperature**4)/(unit_velocity*unit_pressure)
+    fld_sigma_0 = 5.67051d-5*(unit_temperature**4.d0)/(unit_velocity*unit_pressure)
 
   end subroutine fld_init
 
@@ -124,50 +125,50 @@ module mod_fld
       !> Begin by evolving the radiation energy field
       call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
 
-      ! !> Calculate the radiative flux using the FLD Approximation
-      ! call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
-      !
-      ! do idir = 1,ndir
-      !   !> Radiation force = kappa*rho/c *Flux
-      !   radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
-      !
-      !   !> Momentum equation source term
-      !   w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
-      !       + qdt * radiation_force(ixI^S,idir)
-      ! enddo
-      !
-      ! !> Get pressure
-      ! call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
-      !
-      ! !> calc Temperature as p/rho
-      ! temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
-      ! ! temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) ????
-      !
-      ! !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
-      ! radiation_cooling(ixO^S) = 4*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
-      ! !> Heating = c kappa E_rad
-      ! radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
-      !
-      ! ! !> Write energy to file
-      ! ! if (it == 0) open(1,file='energy_out1')
-      ! ! write(1,222) it,global_time,w(5,5,iw_e)
-      ! ! if (it == it_max) close(1)
-      ! ! 222 format(i8,2e15.5E3)
-      !
-      ! !> Energy equation source terms
-      ! w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-      !    + qdt * radiation_heating(ixO^S) &
-      !    - qdt * radiation_cooling(ixO^S)
-      !
-      ! !> Photon tiring
-      ! call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
-      ! photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
-      !
-      ! !> Radiation Energy source term
-      ! w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-      !    - qdt * radiation_heating(ixO^S) &
-      !    + qdt * radiation_cooling(ixO^S)
-      !    !- qdt * photon_tiring(ixO^S) &
+      !> Calculate the radiative flux using the FLD Approximation
+      call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+
+      do idir = 1,ndir
+        !> Radiation force = kappa*rho/c *Flux
+        radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
+
+        !> Momentum equation source term
+        w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
+            + qdt * radiation_force(ixI^S,idir)
+      enddo
+
+      !> Get pressure
+      call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
+
+      !> calc Temperature as p/rho
+      !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
+      temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) !????
+
+      !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
+      radiation_cooling(ixO^S) = 4.d0*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
+      !> Heating = c kappa E_rad
+      radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
+
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out1')
+      ! write(1,222) it,global_time,w(5,5,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
+
+      !> Energy equation source terms
+      w(ixO^S,iw_e) = w(ixO^S,iw_e) &
+         + qdt * radiation_heating(ixO^S) &
+         - qdt * radiation_cooling(ixO^S)
+
+      !> Photon tiring
+      call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
+      photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
+
+      !> Radiation Energy source term
+      w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+         - qdt * radiation_heating(ixO^S) &
+         + qdt * radiation_cooling(ixO^S) &
+         - qdt * photon_tiring(ixO^S)
 
     end if
 
@@ -240,8 +241,7 @@ module mod_fld
     !> Calculate radiation pressure
     !> P = (lambda + lambda^2 R^2)*E
     f(ixI^S) = fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2
-    f(ixI^S) = one/two*(one-f(ixI^S))*w(ixI^S,iw_r_e)*fld_speedofligt_0/(4*dpi)&
-    +one/two*(3*f(ixI^S) - 1)
+    f(ixI^S) = one/two*(one-f(ixI^S)) + one/two*(3*f(ixI^S) - one)
     rad_pressure(ixI^S) = f(ixI^S) * w(ixI^S, iw_r_e)
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -249,6 +249,19 @@ module mod_fld
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   end subroutine fld_get_radflux
+
+
+  subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L, ixO^L, idim
+    double precision, intent(in) :: wC(ixI^S, 1:nw), w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+    double precision, intent(inout) :: f(ixI^S, nwflux)
+
+    f(ixO^S, iw_r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, iw_r_e)
+
+  end subroutine fld_get_flux
+
 
 
   subroutine Evolve_ADI(w, x, w_max, ixI^L, ixO^L)
@@ -276,11 +289,13 @@ module mod_fld
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
+
       do j = ixImin2,ixImax2
         Evec1 = E_m(:,j)
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
         E_m(:,j) = Evec1
       enddo
+
       call ADI_boundary_conditions(ixI^L,E_m,w)
 
       !> Setup matrix and vector for sweeping in direction 2
@@ -407,11 +422,6 @@ module mod_fld
       cp(i) = sup(i)/( diag(i)-cp(i-1)*sub(i))
       dp(i) = (bvec(i)-dp(i-1)*sub(i))/(diag(i)-cp(i-1)*sub(i))
     enddo
-    !dp(ixOmax) = (bvec(ixOmax)-dp(ixOmax-1)*sub(ixOmax))/(diag(ixOmax)-cp(ixOmax-1)*sub(ixOmax))
-
-    ! print*, "Em", Evec(ixOmax), "up", bvec(ixOmax),dp(ixOmax-1),sub(ixOmax)
-    ! print*, "dp", dp(ixOmax), "down",diag(ixOmax),cp(ixOmax-1),sub(ixOmax)
-    ! print*, "-----"
 
     ! initialize x
     Evec(ixOmax) = dp(ixOmax)
@@ -424,27 +434,6 @@ module mod_fld
   end subroutine solve_tridiag
 
 
-  ! subroutine ADI_boundary_conditions(ixI^L,E_m)
-  !   use mod_global_parameters
-  !
-  !   integer, intent(in) :: ixI^L
-  !   double precision, intent(inout) :: E_m(ixI^S)
-  !   integer g, h
-  !
-  !   do g = 0,nghostcells-1
-  !     E_m(ixImin1+g,:) = E_m(ixImin1+nghostcells,:)
-  !     E_m(ixImax1-g,:) = E_m(ixImax1-nghostcells,:)
-  !     E_m(:,ixImin2+g) = E_m(:,ixImin2+nghostcells)
-  !     E_m(:,ixImax2-g) = E_m(:,ixImax2-nghostcells)
-  !     do h = 1, nghostcells
-  !       E_m(ixImin1+g,ixImax2-h) = E_m(ixImin1+nghostcells,ixImax2-nghostcells)
-  !       E_m(ixImax1-g,ixImax2-h) = E_m(ixImax1-nghostcells,ixImax2-nghostcells)
-  !       E_m(ixImin1+g,ixImin2+h) = E_m(ixImin1+nghostcells,ixImin2+nghostcells)
-  !       E_m(ixImax1-g,ixImin2+h) = E_m(ixImax1-nghostcells,ixImin2+nghostcells)
-  !     end do
-  !   end do
-  !
-  ! end subroutine ADI_boundary_conditions
 
   subroutine ADI_boundary_conditions(ixI^L,E_m,w)
     use mod_global_parameters
@@ -454,13 +443,20 @@ module mod_fld
     double precision, intent(inout) :: E_m(ixI^S)
     integer g, h
 
-    do g = 0,nghostcells !> THIS IS VERRRYYYYY CHEATY
+    !Edges
     !do g = 0,nghostcells-1
+    do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
       E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
       E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
       E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
       E_m(:,ixImax2-g) = w(:,ixImax2-nghostcells,iw_r_e)
-      do h = 1, nghostcells
+    end do
+
+    !Corners
+    !do g = 0,nghostcells-1
+    do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+      !do h = 0, nghostcells-1
+      do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
         E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
         E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
         E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)

@@ -102,7 +102,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + 0.577215664d0**(-8*dpi**2*t1)*sin(2*dpi*x(i,j,&
+      e0(i,j) =  two + 1.569034853d0**(-8*dpi**2*t1)*sin(2*dpi*x(i,j,&
          1))*sin(2*dpi*x(i,j,2))
       enddo
     enddo
@@ -162,27 +162,29 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
   double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
      nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
-
-  double precision                   :: rad_flux(ixImin1:ixImax1,&
-     ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
-      fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
+  double precision                   :: residual(ixImin1:ixImax1,&
      ixImin2:ixImax2)
+  ! double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
 
-  call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_flux, rad_pressure)
-  call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
-     ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
 
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,1)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
+  ! call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+  ! call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+
+  residual(ixImin1:ixImax1,ixImin2:ixImax2) = spotpattern(x,ixImin1,ixImin2,&
+     ixImax1,ixImax2,global_time)
+  residual(ixImin1:ixImax1,ixImin2:ixImax2) = (residual(ixImin1:ixImax1,&
+     ixImin2:ixImax2) - w(ixImin1:ixImax1,ixImin2:ixImax2,&
+     r_e))/residual(ixImin1:ixImax1,ixImin2:ixImax2)
+
+  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1) = residual(ixOmin1:ixOmax1,&
      ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
+
+  ! w(ixO^S,nw+1)=rad_flux(ixO^S,1)
+  ! w(ixO^S,nw+2)=rad_flux(ixO^S,2)
+  ! w(ixO^S,nw+3)=rad_pressure(ixO^S)
+  ! w(ixO^S,nw+4)=fld_lambda(ixO^S)
+  ! w(ixO^S,nw+5)=fld_R(ixO^S)
+
 
 end subroutine specialvar_output
 
@@ -191,7 +193,8 @@ subroutine specialvarnames_output(varnames)
   use mod_global_parameters
   character(len=*) :: varnames
 
-  varnames = 'F1 F2 RP lam fld_R'
+  varnames = 'residual'
+  ! varnames = 'F1 F2 RP lam fld_R'
 
 end subroutine specialvarnames_output
 

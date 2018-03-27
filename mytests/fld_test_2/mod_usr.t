@@ -79,7 +79,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixG^S, nw)
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1.d3
+    w(ixG^S, rho_) = 1.d2
     w(ixG^S, mom(:)) = zero
     w(ixG^S, e_) = 1.d0
     w(ixG^S,r_e) =  spotpattern(x,ixG^L,0.d0)
@@ -127,7 +127,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1.d3
+    w(ixI^S,rho_) = 1.d5
     w(ixI^S,mom(:)) = zero
     w(ixI^S,e_) = 1.d0
 

@@ -15,14 +15,14 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 10
-   ditsave_log     = 10
+   ditsave_dat     = 1
+   ditsave_log     = 1
 /
 
  &stoplist
    !time_max = 2.0d-3
    dtmin = 1.0d-20
-   it_max = 100
+   it_max = 10
 /
 
  &methodlist
@@ -45,14 +45,14 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 16
-   domain_nx2         = 32
-   block_nx1          = 16
-   block_nx2          = 32
+   domain_nx1         = 50
+   domain_nx2         = 50
+   block_nx1          = 50
+   block_nx2          = 50
    xprobmin1       =  -0.5d0
    xprobmax1       =  0.5d0
    xprobmin2       =  0.0d0
-   xprobmax2       =  2.0d0
+   xprobmax2       =  1.0d0
    iprob=1
    refine_threshold   = 20*0.5d0
    derefine_ratio     = 20*1.d0/2.d0
@@ -60,7 +60,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 1.d-10
+  dtpar = 1.d-6
  /
 
  &hd_list
@@ -73,5 +73,5 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 2
+  fld_numdt = 20
  /

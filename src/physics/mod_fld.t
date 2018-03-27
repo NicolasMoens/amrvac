@@ -179,7 +179,7 @@ module mod_fld
     use mod_global_parameters
 
     integer, intent(in)          :: ixI^L, ixO^L
-    double precision, intent(in) :: w(ixI^S, nw)
+    double precision, intent(in) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out) :: fld_R(ixI^S), fld_lambda(ixI^S)
     double precision ::  normgrad2(ixI^S)
@@ -210,7 +210,7 @@ module mod_fld
     !use geometry, only: gradient
 
     integer, intent(in)          :: ixI^L, ixO^L
-    double precision, intent(in) :: w(ixI^S, nw)
+    double precision, intent(in) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out):: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
     double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S), f(ixI^S)
@@ -254,22 +254,18 @@ module mod_fld
   subroutine Evolve_ADI(w, x, w_max, ixI^L, ixO^L)
     use mod_global_parameters
 
-    integer, intent(in)          :: ixI^L, ixO^L, w_max
-    double precision, intent(inout) :: w(ixI^S, nw)
+    integer, intent(in) :: ixI^L, ixO^L, w_max
+    double precision, intent(inout) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_m(ixI^S), E_n(ixI^S)
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
+    double precision :: Evec1(ixImax1), Evec2(ixImax2)
     double precision :: dw, delta_x
     integer g, h, m, j
 
     E_n(ixI^S) = w(ixI^S,iw_r_e)
     E_m(ixI^S) = w(ixI^S,iw_r_e)
-
-    print*, "##########################"
-    print*, "it", it
-    print*, E_m(18,18)
-    print*, "##########################"
 
     !> WHY CAN'T I USE dx ?!?!?!?!?
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
@@ -278,34 +274,27 @@ module mod_fld
       !> Set pseudotimestep
       dw = delta_x/4.d0*(max(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
 
-      print*, "m", m, "dw", dw, "exp", ((m-one)/(w_max-one))
-
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin2,ixImax2
-        call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),E_m(:,j))
+        Evec1 = E_m(:,j)
+        call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
+        E_m(:,j) = Evec1
       enddo
-      call ADI_boundary_conditions(ixI^L,E_m)
-
-      print*, "################"
-      ! print*, it, m
-      ! print*, E_m(18,18)
+      call ADI_boundary_conditions(ixI^L,E_m,w)
 
       !> Setup matrix and vector for sweeping in direction 2
-      call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
+      call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin1,ixImax1
-        call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2, diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),E_m(j,:))
-        !CHECK INDICES ON E_m AS ARGUMENT IN SOLVE_TRIDIAG
+        Evec2 = E_m(j,:)
+        call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
+        E_m(j,:) = Evec2
       enddo
-      call ADI_boundary_conditions(ixI^L,E_m)
-
-      print*, "################"
-      ! print*, it, m
-      ! print*, E_m(18,18)
+      call ADI_boundary_conditions(ixI^L,E_m,w)
 
     enddo
 
-    w(ixO^S,iw_r_e) = E_m(ixO^S)
+    w(ixI^S,iw_r_e) = E_m(ixI^S)
 
   end subroutine Evolve_ADI
 
@@ -315,7 +304,7 @@ module mod_fld
 
     integer, intent(in) :: sweepdir, ixImax
     integer, intent(in)          :: ixI^L, ixO^L
-    double precision, intent(in) :: w(ixI^S, nw), dw
+    double precision, intent(in) :: w(ixI^S, 1:nw), dw
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(in) :: E_n(ixI^S), E_m(ixI^S)
     double precision, intent(out):: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
@@ -357,7 +346,7 @@ module mod_fld
          diag1(i,j) = beta(i)
          sub1(i+1,j) = -h*D(i+1,j,1)
          sup1(i,j) = -h*D(i+1,j,1)
-         bvec1(i,j) = (1 + h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
+         bvec1(i,j) = (1 - h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
          + h*D(i,j+1,2)*E_m(i,j+1) + h*D(i,j,2)*E_m(i,j-1) + dw/(two*dt)*E_n(i,j)
        enddo
 
@@ -366,16 +355,6 @@ module mod_fld
        sup1(ixOmax1,j) = zero
        diag1(ixOmin1,j) = beta(ixOmin1) - h*D(ixOmin1,j,1)
        diag1(ixOmax1,j) = beta(ixOmax1) - h*D(ixOmax1+1,j,1)
-
-       ! print*, "D(1)", D(16:19,18,1)
-       ! print*, "D(2)", D(16:19,18,2)
-       ! print*, "sup", sup(16:19,18)
-       ! print*, "diag", diag(16:19,18)
-       ! print*, "sub", sub(16:19,18)
-       !print*, j, "bvec", bvec(16:19,j)
-       !print*, D(16:19,j+1,2), D(16:19,j,2)
-       !print*, "---"
-
       enddo
 
     elseif ( sweepdir == 2 ) then
@@ -390,7 +369,7 @@ module mod_fld
          diag2(i,j) = beta(i)
          sub2(i+1,j) = -h*D(j,i+1,2)
          sup2(i,j) = -h*D(j,i+1,2)
-         bvec2(i,j) = (1 + h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
+         bvec2(i,j) = (1 - h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
          + h*D(j+1,i,1)*E_m(j+1,i) + h*D(j,i,1)*E_m(j-1,i) + dw/(two*dt)*E_n(j,i)
        enddo
 
@@ -408,14 +387,14 @@ module mod_fld
   end subroutine make_matrix
 
 
-  subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,E_m)
+  subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,Evec)
     use mod_global_parameters
     implicit none
 
     integer, intent(in) :: ixOmin,ixOmax,ixImin,ixImax
     double precision, intent(in) :: diag(ixImax), bvec(ixImax)
     double precision, intent(in) :: sub(ixImax), sup(ixImax)
-    double precision, intent(out) :: E_m(ixImax)
+    double precision, intent(out) :: Evec(ixImax)
     double precision :: cp(ixImax), dp(ixImax)
     integer :: i
 
@@ -430,40 +409,62 @@ module mod_fld
     enddo
     !dp(ixOmax) = (bvec(ixOmax)-dp(ixOmax-1)*sub(ixOmax))/(diag(ixOmax)-cp(ixOmax-1)*sub(ixOmax))
 
-    print*, "Em", E_m(ixOmax), "up", bvec(ixOmax),dp(ixOmax-1),sub(ixOmax)
-    print*, "dp", dp(ixOmax), "down",diag(ixOmax),cp(ixOmax-1),sub(ixOmax)
-    ! print*, bvec(ixOmax),dp(ixOmax-1),sub(ixOmax)
-    ! print*, diag(ixOmax),cp(ixOmax-1),sub(ixOmax)
-    print*, "-----"
+    ! print*, "Em", Evec(ixOmax), "up", bvec(ixOmax),dp(ixOmax-1),sub(ixOmax)
+    ! print*, "dp", dp(ixOmax), "down",diag(ixOmax),cp(ixOmax-1),sub(ixOmax)
+    ! print*, "-----"
 
     ! initialize x
-    E_m(ixOmax) = dp(ixOmax)
+    Evec(ixOmax) = dp(ixOmax)
 
     ! solve for x from the vectors c-prime and d-prime
     do i = ixOmax-1, ixOmin, -1
-      E_m(i) = dp(i)-cp(i)*E_m(i+1)
+      Evec(i) = dp(i)-cp(i)*Evec(i+1)
     end do
 
   end subroutine solve_tridiag
 
 
-  subroutine ADI_boundary_conditions(ixI^L,E_m)
+  ! subroutine ADI_boundary_conditions(ixI^L,E_m)
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in) :: ixI^L
+  !   double precision, intent(inout) :: E_m(ixI^S)
+  !   integer g, h
+  !
+  !   do g = 0,nghostcells-1
+  !     E_m(ixImin1+g,:) = E_m(ixImin1+nghostcells,:)
+  !     E_m(ixImax1-g,:) = E_m(ixImax1-nghostcells,:)
+  !     E_m(:,ixImin2+g) = E_m(:,ixImin2+nghostcells)
+  !     E_m(:,ixImax2-g) = E_m(:,ixImax2-nghostcells)
+  !     do h = 1, nghostcells
+  !       E_m(ixImin1+g,ixImax2-h) = E_m(ixImin1+nghostcells,ixImax2-nghostcells)
+  !       E_m(ixImax1-g,ixImax2-h) = E_m(ixImax1-nghostcells,ixImax2-nghostcells)
+  !       E_m(ixImin1+g,ixImin2+h) = E_m(ixImin1+nghostcells,ixImin2+nghostcells)
+  !       E_m(ixImax1-g,ixImin2+h) = E_m(ixImax1-nghostcells,ixImin2+nghostcells)
+  !     end do
+  !   end do
+  !
+  ! end subroutine ADI_boundary_conditions
+
+  subroutine ADI_boundary_conditions(ixI^L,E_m,w)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L
+    double precision, intent(in) :: w(ixI^S,1:nw)
     double precision, intent(inout) :: E_m(ixI^S)
     integer g, h
 
-    do g = 0,nghostcells-1
-      E_m(ixImin1+g,:) = E_m(ixImin1+nghostcells,:)
-      E_m(ixImax1-g,:) = E_m(ixImax1-nghostcells,:)
-      E_m(:,ixImin2+g) = E_m(:,ixImin2+nghostcells)
-      E_m(:,ixImax2-g) = E_m(:,ixImax2-nghostcells)
+    do g = 0,nghostcells !> THIS IS VERRRYYYYY CHEATY
+    !do g = 0,nghostcells-1
+      E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
+      E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
+      E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
+      E_m(:,ixImax2-g) = w(:,ixImax2-nghostcells,iw_r_e)
       do h = 1, nghostcells
-        E_m(ixImin1+g,ixImax2-h) = E_m(ixImin1+nghostcells,ixImax2-nghostcells)
-        E_m(ixImax1-g,ixImax2-h) = E_m(ixImax1-nghostcells,ixImax2-nghostcells)
-        E_m(ixImin1+g,ixImin2+h) = E_m(ixImin1+nghostcells,ixImin2+nghostcells)
-        E_m(ixImax1-g,ixImin2+h) = E_m(ixImax1-nghostcells,ixImin2+nghostcells)
+        E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
+        E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
+        E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
+        E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
       end do
     end do
 

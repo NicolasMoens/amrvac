@@ -82,7 +82,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, nw)
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d3
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d2
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d0
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) =  spotpattern(x,ixGmin1,ixGmin2,&
@@ -136,7 +136,7 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
        1:ndim)
 
-    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d3
+    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d5
     w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
     w(ixImin1:ixImax1,ixImin2:ixImax2,e_) = 1.d0
 

@@ -27,6 +27,24 @@ module mod_fld
     !> the supertimestep == fld_numdt * dt, so this is a ratio!!!
     integer, public :: fld_numdt = 10
 
+    !> Switch different terms on/off
+    !> Solve parabolic system using ADI (Diffusion)
+    logical :: fld_Diffusion = .true.
+
+    !> Use radiation force sourceterm
+    logical :: fld_Rad_force = .true.
+
+    !> Use Heating and Cooling sourceterms in e_
+    logical :: fld_HeatCool = .true.
+
+    !> Use Heating and Cooling sourceterms in E_rad
+    logical :: fld_HeatCool_rad = .true.
+
+    !> Use Photon Tiring term in E_rad
+    logical :: fld_Phot_Tiring = .true.
+
+
+
     !> public methods
     public :: fld_add_source
     public :: fld_get_radflux
@@ -40,7 +58,8 @@ module mod_fld
     character(len=*), intent(in) :: files(:)
     integer                      :: n
 
-    namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt
+    namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
+    fld_Rad_force, fld_HeatCool, fld_HeatCool_rad, fld_Phot_Tiring
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -123,19 +142,23 @@ module mod_fld
       active = .true.
 
       !> Begin by evolving the radiation energy field
-      call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
+      if (fld_Diffusion) then
+        call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
+      endif
 
       !> Calculate the radiative flux using the FLD Approximation
       call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
 
-      do idir = 1,ndir
-        !> Radiation force = kappa*rho/c *Flux
-        radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
+      if (fld_Rad_force) then
+        do idir = 1,ndir
+          !> Radiation force = kappa*rho/c *Flux
+          radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
 
-        !> Momentum equation source term
-        w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
-            + qdt * radiation_force(ixI^S,idir)
-      enddo
+          !> Momentum equation source term
+          w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
+              + qdt * radiation_force(ixI^S,idir)
+        enddo
+      endif
 
       !> Get pressure
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
@@ -149,27 +172,39 @@ module mod_fld
       !> Heating = c kappa E_rad
       radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
 
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out1')
-      ! write(1,222) it,global_time,w(5,5,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
+      !> Write energy to file
+      if (it == 0) open(1,file='energy_out5')
+      write(1,222) it,global_time,w(5,5,iw_e)
+      if (it == it_max) close(1)
+      222 format(i8,2e15.5E3)
 
       !> Energy equation source terms
-      w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-         + qdt * radiation_heating(ixO^S) &
-         - qdt * radiation_cooling(ixO^S)
-
-      !> Photon tiring
-      call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
-      photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
+      if (fld_HeatCool) then
+        w(ixO^S,iw_e) = w(ixO^S,iw_e) &
+           + qdt * radiation_heating(ixO^S) &
+           - qdt * radiation_cooling(ixO^S)
+      endif
 
       !> Radiation Energy source term
-      w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-         - qdt * radiation_heating(ixO^S) &
-         + qdt * radiation_cooling(ixO^S) &
-         - qdt * photon_tiring(ixO^S)
+      if (fld_HeatCool_rad) then
+        w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+           - qdt * radiation_heating(ixO^S) &
+           + qdt * radiation_cooling(ixO^S)
+      endif
 
+      !> Photon tiring
+      if (fld_Phot_Tiring) then
+        call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
+
+        photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!!        CONTRACTION, NOT DIVISION      !!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+           - qdt * photon_tiring(ixO^S)
+      endif
     end if
 
   end subroutine fld_add_source

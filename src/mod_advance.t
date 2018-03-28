@@ -467,14 +467,11 @@ contains
     case ('fd')
        call fd(method,qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D,x)
     case ('tvdmu','tvdlf','hll','hllc','hllcd','hlld')
-       !print*, "BEFORE CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
        call finite_volume(method,qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D,x)
-       !print*, "AFTER CALLING finite_volume from advect1_grid", w(5,5,iw_mom(1))
     case ('tvd')
        call centdiff(qdt,ixI^L,ixO^L,idim^LIM,qtC,wCT,qt,w,fC,dx^D,x)
        call tvdlimit(method,qdt,ixI^L,ixO^L,idim^LIM,wCT,qt+qdt,w,fC,dx^D,x)
     case ('source')
-       !print*, "CALLING addsource2 from mod_advance"
        call addsource2(qdt*dble(idimmax-idimmin+1)/dble(ndim),&
             ixI^L,ixO^L,1,nw,qtC,wCT,qt,w,x,.false.)
     case ('nul')

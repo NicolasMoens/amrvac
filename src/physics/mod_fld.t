@@ -251,14 +251,14 @@ module mod_fld
   end subroutine fld_get_radflux
 
 
-  subroutine fld_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
+  subroutine fld_get_flux(w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L, ixO^L, idim
-    double precision, intent(in) :: wC(ixI^S, 1:nw), w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+    double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
     double precision, intent(inout) :: f(ixI^S, nwflux)
 
-    f(ixO^S, iw_r_e) = w(ixO^S,iw_mom(idim)) * wC(ixO^S, iw_r_e)
+    f(ixO^S, iw_r_e) = w(ixO^S,iw_mom(idim)) * w(ixO^S, iw_r_e)
 
   end subroutine fld_get_flux
 
@@ -309,7 +309,7 @@ module mod_fld
 
     enddo
 
-    w(ixI^S,iw_r_e) = E_m(ixI^S)
+    w(ixO^S,iw_r_e) = E_m(ixO^S)
 
   end subroutine Evolve_ADI
 

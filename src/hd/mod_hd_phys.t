@@ -445,6 +445,7 @@ contains
   subroutine hd_get_cmax(w, x, ixI^L, ixO^L, idim, cmax)
     use mod_global_parameters
     use mod_dust, only: dust_get_cmax
+    use mod_fld, only: fld_get_csound2 !> NICOLAS MOENS
 
     integer, intent(in)                       :: ixI^L, ixO^L, idim
     double precision, intent(in)              :: w(ixI^S, nw), x(ixI^S, 1:ndim)
@@ -453,7 +454,15 @@ contains
     double precision                          :: v(ixI^S)
 
     call hd_get_v(w, x, ixI^L, ixO^L, idim, v)
-    call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
+    !call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
+
+    !> NICOLAS MOENS
+    if (hd_fld) then
+      call fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound)
+    else
+      call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
+    end if
+
     csound(ixO^S) = sqrt(csound(ixO^S))
 
     cmax(ixO^S) = abs(v(ixO^S))+csound(ixO^S)

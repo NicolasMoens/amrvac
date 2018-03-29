@@ -43,13 +43,12 @@ module mod_fld
     !> Use Photon Tiring term in E_rad
     logical :: fld_Phot_Tiring = .true.
 
-
-
     !> public methods
     public :: fld_add_source
     public :: fld_get_radflux
     public :: fld_get_fluxlimiter
     public :: fld_get_flux
+    public :: fld_get_csound2
 
   contains
 
@@ -195,12 +194,7 @@ module mod_fld
       !> Photon tiring
       if (fld_Phot_Tiring) then
         call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
-
-        photon_tiring(ixO^S) = 0 ! div_v(ixO^S)/rad_pressure(ixO^S)
-
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !!!!        CONTRACTION, NOT DIVISION      !!!
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        photon_tiring(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)
 
         w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
            - qdt * photon_tiring(ixO^S)
@@ -500,6 +494,25 @@ module mod_fld
     end do
 
   end subroutine ADI_boundary_conditions
+
+  subroutine fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound2)
+    use mod_global_parameters
+    use mod_physics, only: phys_get_pthermal
+
+    integer, intent(in)             :: ixI^L, ixO^L
+    double precision, intent(in)    :: w(ixI^S,nw), hd_gamma
+    double precision, intent(in)    :: x(ixI^S,1:ndim)
+    double precision, intent(out)   :: csound2(ixI^S)
+
+    double precision :: pth(ixI^S), prad(ixI^S), rad_flux(ixI^S,1:ndim)
+
+    call fld_get_radflux(w,x,ixI^L,ixO^L,rad_flux,prad)
+    call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
+    csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
+    csound2(ixO^S)=max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
+
+  end subroutine fld_get_csound2
+
 
 
   subroutine grad(q,ixI^L,ix^L,idir,x,gradq)

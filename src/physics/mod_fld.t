@@ -550,14 +550,16 @@ module mod_fld
       call Bisection_method(e_gas(i,j), E_rad(i,j), a_one(i,j), a_two(i,j), a_three(i,j), a_four(i,j))
     enddo
     enddo
+    print*, e_gas(10,10)
 
+    !> Update gas-energy in w
     w(ixO^S,iw_e) = e_gas(ixO^S)
 
+    !> Calculate new radiation energy
     !> Get pressure
     call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
 
     !> calc Temperature as p/rho
-    !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
     temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho)) !????
 
     !> calc photon tiring term
@@ -570,9 +572,11 @@ module mod_fld
     E_rad(ixO^S) = one/(one + dt*fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho))* &
     (dt*(4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 - div_v(ixO^S)*rad_pressure(ixO^S)) + E_rad(ixO^S))
 
+    !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
 
   end subroutine Energy_interaction
+
 
   subroutine Bisection_method(e_gas, E_rad, a_one, a_two, a_three, a_four)
     use mod_global_parameters
@@ -581,14 +585,17 @@ module mod_fld
     double precision, intent(in)    :: E_rad
     double precision, intent(inout) :: e_gas
 
-    double precision :: bisect_a, bisect_b, bisect_c, tol
+    double precision :: bisect_a, bisect_b, bisect_c
 
-    tol = fld_bisect_tol*e_gas
     bisect_a = zero
     bisect_b = 1.d1*e_gas
 
-    do while (abs(bisect_b-bisect_a) .gt. tol)
+    do while (abs(bisect_b-bisect_a) .gt. fld_bisect_tol*e_gas)
       bisect_c = (bisect_a + bisect_b)/two
+
+      print*, bisect_a,bisect_b,bisect_c
+      print*,e_gas, abs(bisect_b-bisect_a)
+
       if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
       Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
         bisect_b = bisect_c
@@ -596,13 +603,31 @@ module mod_fld
       Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
         bisect_a = bisect_c
       else
-        call mpistop("Bisection method is failing")
+
+        print*, Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
+        Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four)
+        print*, Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
+        Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four)
+
+        bisect_a = e_gas
+        bisect_b = e_gas
+        bisect_c = e_gas
+
+        !print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!!!!!!!!          IGNORING ENERGY GAS-RAD EXCHANGE          !!!!!!!!!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
       endif
     enddo
+
+    stop
 
     e_gas = bisect_c
 
   end subroutine Bisection_method
+
 
 
   function Polynomial_Bisection(e_gas, E_rad, a_one, a_two, a_three, a_four) result(pol_result)

@@ -111,7 +111,7 @@ end subroutine initglobaldata_usr
        c_sound0*T_star0**4-3*kappa0*Flux0/c_light0*(x(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2,2)-x(1,1,2))
 
-    print*, w(:, 10, e_)
+    ! print*, w(:, 10, e_)
 
   end subroutine initial_conditions
 
@@ -146,6 +146,8 @@ end subroutine initglobaldata_usr
     case default
       call mpistop("BC not specified")
     end select
+
+    print*, w(10,10,:)
 
   end subroutine special_bound
 

@@ -27,6 +27,10 @@ module mod_fld
     !> the supertimestep == fld_numdt * dt, so this is a ratio!!!
     integer, public :: fld_numdt = 10
 
+    !> Tolerance for bisection method for Energy sourceterms
+    !> This is a percentage of the gas-energy
+    double precision, public :: fld_bisect_tol = 1.d-3
+
     !> Switch different terms on/off
     !> Solve parabolic system using ADI (Diffusion)
     logical :: fld_Diffusion = .true.
@@ -35,13 +39,7 @@ module mod_fld
     logical :: fld_Rad_force = .true.
 
     !> Use Heating and Cooling sourceterms in e_
-    logical :: fld_HeatCool = .true.
-
-    !> Use Heating and Cooling sourceterms in E_rad
-    logical :: fld_HeatCool_rad = .true.
-
-    !> Use Photon Tiring term in E_rad
-    logical :: fld_Phot_Tiring = .true.
+    logical :: fld_Energy_interact = .true.
 
     !> public methods
     public :: fld_add_source
@@ -58,7 +56,7 @@ module mod_fld
     integer                      :: n
 
     namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
-    fld_Rad_force, fld_HeatCool, fld_HeatCool_rad, fld_Phot_Tiring
+    fld_Rad_force, fld_Energy_interact, fld_bisect_tol
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -145,10 +143,6 @@ module mod_fld
         call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
       endif
 
-      print*, "######################################"
-      print*, "rad_energy", w(5,5,iw_r_e)
-      print*, w(5,5,:)
-
       !> Calculate the radiative flux using the FLD Approximation
       call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
 
@@ -163,17 +157,21 @@ module mod_fld
         enddo
       endif
 
-      !> Get pressure
-      call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
+      if (fld_Energy_interact) then
+        call Energy_interaction(w, x, ixI^L, ixO^L)
+      endif
 
-      !> calc Temperature as p/rho
-      !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
-      temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) !????
-
-      !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
-      radiation_cooling(ixO^S) = 4.d0*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
-      !> Heating = c kappa E_rad
-      radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
+      ! !> Get pressure
+      ! call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
+      !
+      ! !> calc Temperature as p/rho
+      ! !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
+      ! temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) !????
+      !
+      ! !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
+      ! radiation_cooling(ixO^S) = 4.d0*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
+      ! !> Heating = c kappa E_rad
+      ! radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
 
       ! !> Write energy to file
       ! if (it == 0) open(1,file='energy_out5')
@@ -181,42 +179,34 @@ module mod_fld
       ! if (it == it_max) close(1)
       ! 222 format(i8,2e15.5E3)
 
-      !> Energy equation source terms
-      if (fld_HeatCool) then
-        w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-           + qdt * radiation_heating(ixO^S) &
-           - qdt * radiation_cooling(ixO^S)
-      endif
-
-      !> Radiation Energy source term
-      if (fld_HeatCool_rad) then
-        w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-           - qdt * radiation_heating(ixO^S) &
-           + qdt * radiation_cooling(ixO^S)
-      endif
-
-      !> Photon tiring
-      if (fld_Phot_Tiring) then
-        do idir=1,ndim
-          vel(ixI^S,idir)= wCT(ixI^S,iw_mom(idir))/wCT(ixI^S,iw_rho)
-        enddo
-
-        call divvector(vel,ixI^L,ixO^L,div_v)
-        photon_tiring(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)
-
-        w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-           - qdt * photon_tiring(ixO^S)
-      endif
+      ! !> Energy equation source terms
+      ! if (fld_HeatCool) then
+      !   w(ixO^S,iw_e) = w(ixO^S,iw_e) &
+      !      + qdt * radiation_heating(ixO^S) &
+      !      - qdt * radiation_cooling(ixO^S)
+      ! endif
+      !
+      ! !> Radiation Energy source term
+      ! if (fld_HeatCool_rad) then
+      !   w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+      !      - qdt * radiation_heating(ixO^S) &
+      !      + qdt * radiation_cooling(ixO^S)
+      ! endif
+      !
+      ! !> Photon tiring
+      ! if (fld_Phot_Tiring) then
+      !   do idir=1,ndim
+      !     vel(ixI^S,idir)= wCT(ixI^S,iw_mom(idir))/wCT(ixI^S,iw_rho)
+      !   enddo
+      !
+      !   call divvector(vel,ixI^L,ixO^L,div_v)
+      !   photon_tiring(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)
+      !
+      !   w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
+      !      - qdt * photon_tiring(ixO^S)
+      ! endif
     end if
 
-    print*, "######################################"
-    print*, "rad_energy", w(5,5,iw_r_e)
-    print*, "radiation force", radiation_force(5,5,2)
-    print*, "heating", qdt * radiation_heating(5,5)
-    print*, "cooling", qdt * radiation_cooling(5,5)
-    print*, "photon tiring", qdt * photon_tiring(5,5)
-    print*, "######################################"
-    print*, w(5,5,:)
 
   end subroutine fld_add_source
 
@@ -289,10 +279,6 @@ module mod_fld
     f(ixI^S) = fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2
     f(ixI^S) = one/two*(one-f(ixI^S)) + one/two*(3*f(ixI^S) - one)
     rad_pressure(ixI^S) = f(ixI^S) * w(ixI^S, iw_r_e)
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!  ^   THIS IS NOT YET CORRECT   ^  !!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   end subroutine fld_get_radflux
 
@@ -511,6 +497,128 @@ module mod_fld
     end do
 
   end subroutine ADI_boundary_conditions
+
+
+  subroutine Energy_interaction(w, x, ixI^L, ixO^L)
+    use mod_global_parameters
+    use mod_physics, only: phys_get_pthermal
+
+    integer, intent(in)             :: ixI^L, ixO^L
+    double precision, intent(in)    :: x(ixI^S,1:ndim)
+    double precision, intent(inout) :: w(ixI^S,1:nw)
+
+    double precision :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S)
+    double precision :: temperature(ixI^S), div_v(ixI^S), vel(ixI^S,1:ndim)
+    double precision :: a_one(ixI^S), a_two(ixI^S), a_three(ixI^S), a_four(ixI^S)
+    double precision :: e_gas(ixI^S), E_rad(ixI^S)
+
+    double precision :: hd_gamma = 5.d0/3.d0
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!  WHY DO I NEED TO DEFINE GAMMA HERE?!?!?8?8?        !!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    integer :: i,j,idir
+
+    !> Calculate the radiative flux using the FLD Approximation
+    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+
+    !> Get pressure
+    call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
+
+    !> calc Temperature as p/rho
+    !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
+    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho)) !????
+
+    !> calc photon tiring term
+    do idir=1,ndim
+      vel(ixO^S,idir)= w(ixO^S,iw_mom(idir))/w(ixO^S,iw_rho)
+    enddo
+
+    call divvector(vel,ixI^L,ixO^L,div_v)
+
+    !> Calculate coefficients for polynomial
+    a_one(ixI^S) = 4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 * dt
+    a_two(ixI^S) = fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho) * dt
+    a_three(ixI^S) = div_v(ixO^S)*rad_pressure(ixO^S) * dt
+    a_four(ixI^S) = (hd_gamma-one)*div_v(ixO^S) * dt
+
+    e_gas(ixO^S) = w(ixO^S,iw_e)
+    E_rad(ixO^S) = w(ixO^S,iw_r_e)
+
+    do i = ixOmin1,ixOmax1
+    do j =  ixOmin2,ixOmax2
+      call Bisection_method(e_gas(i,j), E_rad(i,j), a_one(i,j), a_two(i,j), a_three(i,j), a_four(i,j))
+    enddo
+    enddo
+
+    w(ixO^S,iw_e) = e_gas(ixO^S)
+
+    !> Get pressure
+    call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
+
+    !> calc Temperature as p/rho
+    !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
+    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho)) !????
+
+    !> calc photon tiring term
+    do idir=1,ndim
+      vel(ixI^S,idir)= w(ixI^S,iw_mom(idir))/w(ixI^S,iw_rho)
+    enddo
+
+    call divvector(vel,ixI^L,ixO^L,div_v)
+
+    E_rad(ixO^S) = one/(one + dt*fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho))* &
+    (dt*(4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 - div_v(ixO^S)*rad_pressure(ixO^S)) + E_rad(ixO^S))
+
+    w(ixO^S,iw_r_e) = E_rad(ixO^S)
+
+  end subroutine Energy_interaction
+
+  subroutine Bisection_method(e_gas, E_rad, a_one, a_two, a_three, a_four)
+    use mod_global_parameters
+
+    double precision, intent(in)    :: a_one, a_two, a_three, a_four
+    double precision, intent(in)    :: E_rad
+    double precision, intent(inout) :: e_gas
+
+    double precision :: bisect_a, bisect_b, bisect_c, tol
+
+    tol = fld_bisect_tol*e_gas
+    bisect_a = zero
+    bisect_b = 1.d1*e_gas
+
+    do while (abs(bisect_b-bisect_a) .gt. tol)
+      bisect_c = (bisect_a + bisect_b)/two
+      if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
+      Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
+        bisect_b = bisect_c
+      elseif (Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
+      Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
+        bisect_a = bisect_c
+      else
+        call mpistop("Bisection method is failing")
+      endif
+    enddo
+
+    e_gas = bisect_c
+
+  end subroutine Bisection_method
+
+
+  function Polynomial_Bisection(e_gas, E_rad, a_one, a_two, a_three, a_four) result(pol_result)
+    use mod_global_parameters
+
+    double precision, intent(in) :: e_gas, E_rad
+    double precision, intent(in) :: a_one, a_two, a_three, a_four
+    double precision :: pol_result
+
+    pol_result = e_gas**4 &
+    + (one + a_four)*(one + a_two + a_three)/(a_one*(one + a_three))*e_gas &
+    - ((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three))
+
+  end function Polynomial_Bisection
+
+
 
   subroutine fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound2)
     use mod_global_parameters

@@ -15,14 +15,14 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 1000
-   ditsave_log     = 1000
+   ditsave_dat     = 10
+   ditsave_log     = 10
 /
 
  &stoplist
    !time_max = 2.0d-3
    dtmin = 1.0d-20
-   it_max = 10000
+   it_max = 100
 /
 
  &methodlist
@@ -60,7 +60,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 1.d-8
+  dtpar = 1.d-20
  /
 
  &hd_list
@@ -75,9 +75,8 @@
   fld_mu = 0.6d0
   fld_split = .false.
   fld_numdt = 50
+  fld_bisect_tol = 1.d-3
   fld_Diffusion = .true.
   fld_Rad_force = .true.
-  fld_HeatCool = .false.
-  fld_HeatCool_rad = .false.
-  fld_Phot_Tiring = .true.
+  fld_Energy_interact = .true.
  /

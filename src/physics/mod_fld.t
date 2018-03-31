@@ -127,7 +127,7 @@ module mod_fld
     double precision :: temperature(ixI^S)
     double precision :: rad_flux(ixI^S,1:ndim)
     double precision :: rad_pressure(ixI^S)
-    double precision :: div_v(ixI^S)
+    double precision :: div_v(ixI^S), vel(ixI^S,1:ndim)
 
     double precision :: radiation_force(ixI^S,1:ndim)
     double precision :: radiation_cooling(ixI^S)
@@ -144,6 +144,10 @@ module mod_fld
       if (fld_Diffusion) then
         call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
       endif
+
+      print*, "######################################"
+      print*, "rad_energy", w(5,5,iw_r_e)
+      print*, w(5,5,:)
 
       !> Calculate the radiative flux using the FLD Approximation
       call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
@@ -171,11 +175,11 @@ module mod_fld
       !> Heating = c kappa E_rad
       radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
 
-      !> Write energy to file
-      if (it == 0) open(1,file='energy_out5')
-      write(1,222) it,global_time,w(5,5,iw_e)
-      if (it == it_max) close(1)
-      222 format(i8,2e15.5E3)
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out5')
+      ! write(1,222) it,global_time,w(5,5,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
 
       !> Energy equation source terms
       if (fld_HeatCool) then
@@ -193,13 +197,26 @@ module mod_fld
 
       !> Photon tiring
       if (fld_Phot_Tiring) then
-        call divvector(wCT(ixI^S,iw_mom(:)),ixI^L,ixO^L,div_v)
+        do idir=1,ndim
+          vel(ixI^S,idir)= wCT(ixI^S,iw_mom(idir))/wCT(ixI^S,iw_rho)
+        enddo
+
+        call divvector(vel,ixI^L,ixO^L,div_v)
         photon_tiring(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)
 
         w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
            - qdt * photon_tiring(ixO^S)
       endif
     end if
+
+    print*, "######################################"
+    print*, "rad_energy", w(5,5,iw_r_e)
+    print*, "radiation force", radiation_force(5,5,2)
+    print*, "heating", qdt * radiation_heating(5,5)
+    print*, "cooling", qdt * radiation_cooling(5,5)
+    print*, "photon tiring", qdt * photon_tiring(5,5)
+    print*, "######################################"
+    print*, w(5,5,:)
 
   end subroutine fld_add_source
 

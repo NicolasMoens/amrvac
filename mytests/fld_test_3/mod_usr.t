@@ -50,7 +50,7 @@ contains
     usr_special_bc => special_bound
 
     ! Graviatational field
-    !usr_gravity => set_gravitation_field
+    usr_gravity => set_gravitation_field
 
     ! Output routines
     ! usr_aux_output    => specialvar_output
@@ -152,9 +152,11 @@ subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
   double precision, intent(in)    :: wCT(ixI^S,1:nw)
   double precision, intent(out)   :: gravity_field(ixI^S,ndim)
 
+  ! phi = -GM/R
 
-  ! gravity_field(ixI^S,1) = zero
-  ! gravity_field(ixI^S,2) =
+  gravity_field(ixI^S,1) = zero
+  gravity_field(ixI^S,2) = 6.67e-8*M_star/(R_star+x(ixI^S,2))&
+  *(unit_density/unit_pressure)
 
 end subroutine set_gravitation_field
 

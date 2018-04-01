@@ -161,6 +161,8 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
+      print*, w(10,10,:)
+
       ! !> Get pressure
       ! call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
       !
@@ -508,7 +510,7 @@ module mod_fld
 
     double precision :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S)
     double precision :: temperature(ixI^S), div_v(ixI^S), vel(ixI^S,1:ndim)
-    double precision :: a_one(ixI^S), a_two(ixI^S), a_three(ixI^S), a_four(ixI^S)
+    double precision :: a_one(ixI^S), a_two(ixI^S), a_three(ixI^S)
     double precision :: e_gas(ixI^S), E_rad(ixI^S)
 
     double precision :: hd_gamma = 5.d0/3.d0
@@ -543,14 +545,13 @@ module mod_fld
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     a_two(ixO^S) = fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho) * dt
     a_three(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S) * dt
-    a_four(ixO^S) = (hd_gamma-one)*div_v(ixO^S) * dt
 
     e_gas(ixO^S) = w(ixO^S,iw_e)
     E_rad(ixO^S) = w(ixO^S,iw_r_e)
 
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
-      call Bisection_method(e_gas(i,j), E_rad(i,j), a_one(i,j), a_two(i,j), a_three(i,j), a_four(i,j))
+      call Bisection_method(e_gas(i,j), E_rad(i,j), a_one(i,j), a_two(i,j), a_three(i,j))
     enddo
     enddo
 
@@ -571,6 +572,7 @@ module mod_fld
 
     call divvector(vel,ixI^L,ixO^L,div_v)
 
+    !> advance E_rad
     E_rad(ixO^S) = one/(one + dt*fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho))* &
     (dt*(4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 - div_v(ixO^S)*rad_pressure(ixO^S)) + E_rad(ixO^S))
 
@@ -580,10 +582,10 @@ module mod_fld
   end subroutine Energy_interaction
 
 
-  subroutine Bisection_method(e_gas, E_rad, a_one, a_two, a_three, a_four)
+  subroutine Bisection_method(e_gas, E_rad, a_one, a_two, a_three)
     use mod_global_parameters
 
-    double precision, intent(in)    :: a_one, a_two, a_three, a_four
+    double precision, intent(in)    :: a_one, a_two, a_three
     double precision, intent(in)    :: E_rad
     double precision, intent(inout) :: e_gas
 
@@ -592,20 +594,20 @@ module mod_fld
     bisect_a = zero
     bisect_b = abs(((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three))**(one/4.d0))
     bisect_c = abs(((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three)))/&
-               abs((one + a_four)*(one + a_two + a_three)/(a_one*(one + a_three)))
+               abs((one + a_two + a_three)/(a_one*(one + a_three)))
     bisect_b = max(bisect_b,bisect_c)
 
     do while (abs(bisect_b-bisect_a) .gt. fld_bisect_tol*e_gas)
       bisect_c = (bisect_a + bisect_b)/two
 
-      if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
-      Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four) .le. zero) then
+      if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three)*&
+      Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three) .le. zero) then
 
-              if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
-              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .le. zero) then
+              if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three)*&
+              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three) .le. zero) then
                 bisect_b = bisect_c
-              elseif (Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
-              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
+              elseif (Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three)*&
+              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three) .lt. zero) then
                 bisect_a = bisect_c
               else
                 print*, "WHY IS THIS HAPPENING"
@@ -626,19 +628,23 @@ module mod_fld
 
     e_gas = (bisect_a + bisect_b)/two
 
+    print*, e_gas
+    print*, Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three), &
+    Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three)
+
   end subroutine Bisection_method
 
 
 
-  function Polynomial_Bisection(e_gas, E_rad, a_one, a_two, a_three, a_four) result(pol_result)
+  function Polynomial_Bisection(e_gas, E_rad, a_one, a_two, a_three) result(pol_result)
     use mod_global_parameters
 
     double precision, intent(in) :: e_gas, E_rad
-    double precision, intent(in) :: a_one, a_two, a_three, a_four
+    double precision, intent(in) :: a_one, a_two, a_three
     double precision :: pol_result
 
     pol_result = e_gas**4 &
-    + (one + a_four)*(one + a_two + a_three)/(a_one*(one + a_three))*e_gas &
+    + (one + a_two + a_three)/(a_one*(one + a_three))*e_gas &
     - ((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three))
 
   end function Polynomial_Bisection

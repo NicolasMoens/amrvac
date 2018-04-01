@@ -466,7 +466,6 @@ module mod_fld
   end subroutine solve_tridiag
 
 
-
   subroutine ADI_boundary_conditions(ixI^L,E_m,w)
     use mod_global_parameters
 
@@ -537,10 +536,14 @@ module mod_fld
     call divvector(vel,ixI^L,ixO^L,div_v)
 
     !> Calculate coefficients for polynomial
-    a_one(ixI^S) = 4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 * dt
-    a_two(ixI^S) = fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho) * dt
-    a_three(ixI^S) = div_v(ixO^S)*rad_pressure(ixO^S) * dt
-    a_four(ixI^S) = (hd_gamma-one)*div_v(ixO^S) * dt
+    a_one(ixO^S) = 4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*(temperature(ixO^S)/w(ixO^S,iw_e))**4 * dt
+    !a_one(ixO^S) = 4.d0*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4 * dt
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!      THIS TERM IS WROOONNNGGG                   !!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    a_two(ixO^S) = fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho) * dt
+    a_three(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S) * dt
+    a_four(ixO^S) = (hd_gamma-one)*div_v(ixO^S) * dt
 
     e_gas(ixO^S) = w(ixO^S,iw_e)
     E_rad(ixO^S) = w(ixO^S,iw_r_e)
@@ -550,7 +553,6 @@ module mod_fld
       call Bisection_method(e_gas(i,j), E_rad(i,j), a_one(i,j), a_two(i,j), a_three(i,j), a_four(i,j))
     enddo
     enddo
-    print*, e_gas(10,10)
 
     !> Update gas-energy in w
     w(ixO^S,iw_e) = e_gas(ixO^S)
@@ -564,7 +566,7 @@ module mod_fld
 
     !> calc photon tiring term
     do idir=1,ndim
-      vel(ixI^S,idir)= w(ixI^S,iw_mom(idir))/w(ixI^S,iw_rho)
+      vel(ixO^S,idir)= w(ixO^S,iw_mom(idir))/w(ixO^S,iw_rho)
     enddo
 
     call divvector(vel,ixI^L,ixO^L,div_v)
@@ -588,43 +590,41 @@ module mod_fld
     double precision :: bisect_a, bisect_b, bisect_c
 
     bisect_a = zero
-    bisect_b = 1.d1*e_gas
+    bisect_b = abs(((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three))**(one/4.d0))
+    bisect_c = abs(((one + a_two + a_three)*e_gas + a_two*E_rad)/(a_one*(one + a_three)))/&
+               abs((one + a_four)*(one + a_two + a_three)/(a_one*(one + a_three)))
+    bisect_b = max(bisect_b,bisect_c)
 
     do while (abs(bisect_b-bisect_a) .gt. fld_bisect_tol*e_gas)
       bisect_c = (bisect_a + bisect_b)/two
 
-      print*, bisect_a,bisect_b,bisect_c
-      print*,e_gas, abs(bisect_b-bisect_a)
-
       if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
-      Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
-        bisect_b = bisect_c
-      elseif (Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
-      Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
-        bisect_a = bisect_c
-      else
+      Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four) .le. zero) then
 
-        print*, Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
-        Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four)
-        print*, Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
-        Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four)
+              if (Polynomial_Bisection(bisect_a, E_rad, a_one, a_two, a_three, a_four)*&
+              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .le. zero) then
+                bisect_b = bisect_c
+              elseif (Polynomial_Bisection(bisect_b, E_rad, a_one, a_two, a_three, a_four)*&
+              Polynomial_Bisection(bisect_c, E_rad, a_one, a_two, a_three, a_four) .lt. zero) then
+                bisect_a = bisect_c
+              else
+                print*, "WHY IS THIS HAPPENING"
+                stop
+              endif
+
+      else
 
         bisect_a = e_gas
         bisect_b = e_gas
-        bisect_c = e_gas
-
-        !print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
+        print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !!!!!!!!!!          IGNORING ENERGY GAS-RAD EXCHANGE          !!!!!!!!!!
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       endif
     enddo
 
-    stop
-
-    e_gas = bisect_c
+    e_gas = (bisect_a + bisect_b)/two
 
   end subroutine Bisection_method
 

@@ -111,8 +111,6 @@ end subroutine initglobaldata_usr
        c_sound0*T_star0**4-3*kappa0*Flux0/c_light0*(x(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2,2)-x(1,1,2))
 
-    ! print*, w(:, 10, e_)
-
   end subroutine initial_conditions
 
 !==========================================================================================
@@ -137,19 +135,36 @@ end subroutine initglobaldata_usr
     select case (iB)
 
     case(3)
-      w(:,ixBmax2, rho_) =  one
+      w(:,ixBmax2, rho_) = one*perturbation(ixGmin2,ixGmax2,2)
       w(:,ixBmax2, mom(1)) = zero
-      w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))
-      w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2
-      w(:,ixBmax2, r_e) = c_sound0*T_star0**4
+      w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))*perturbation(ixGmin2,&
+         ixGmax2,6)
+      w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2*perturbation(ixGmin2,&
+         ixGmax2,4)
+      w(:,ixBmax2, r_e) = c_sound0*T_star0**4*perturbation(ixGmin2,ixGmax2,3)
 
     case default
       call mpistop("BC not specified")
     end select
 
-    print*, w(10,10,:)
-
   end subroutine special_bound
+
+  function perturbation(ixOmin,ixOmax,n) result(pert_ampl)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixOmin,ixOmax, n
+    double precision :: pert_ampl(ixOmin:ixOmax)
+
+    integer :: i
+
+    do i =  ixOmin,ixOmax
+      pert_ampl(i) = sin(two*dpi*n*(i-ixOmin)/ixOmax)
+      pert_ampl(i) = pert_ampl(i)*sin((global_time/dt)*1.d-1)
+    enddo
+
+    pert_ampl = one + 1.d-2*pert_ampl
+
+  end function perturbation
 
 !==========================================================================================
 

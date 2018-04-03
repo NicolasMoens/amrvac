@@ -50,7 +50,7 @@ contains
     usr_special_bc => special_bound
 
     ! Graviatational field
-    !usr_gravity => set_gravitation_field
+    usr_gravity => set_gravitation_field
 
     ! Output routines
     ! usr_aux_output    => specialvar_output
@@ -58,6 +58,8 @@ contains
 
     ! Active the physics module
     call hd_activate()
+
+    call initglobaldata_usr()
 
     print*, 'unit_time', unit_time
     print*, 'unit_temperature', unit_temperature
@@ -111,16 +113,6 @@ end subroutine initglobaldata_usr
        c_sound0*T_star0**4-3*kappa0*Flux0/c_light0*(x(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2,2)-x(1,1,2))
 
-    print*, "#########################################"
-    print*, w(3,:,rho_)
-    print*, "#########################################"
-    print*, w(3,:,rho_)
-    print*, w(3,:,mom(1))
-    print*, w(3,:,mom(2))
-    print*, w(3,:,e_)
-    print*, w(3,:,r_e)
-    print*, "#########################################"
-
   end subroutine initial_conditions
 
 !==========================================================================================
@@ -145,23 +137,36 @@ end subroutine initglobaldata_usr
     select case (iB)
 
     case(3)
-      w(:,ixBmax2, rho_) =  w(:,ixBmax2+1, rho_)
+      w(:,ixBmax2, rho_) = one*perturbation(ixGmin2,ixGmax2,2)
       w(:,ixBmax2, mom(1)) = zero
-      w(:,ixBmax2, mom(2)) = w(:,ixBmax2+1, mom(2))
-      w(:,ixBmax2, e_) = one !one/(one-3.d0/5.d0)*c_sound0**2
-      w(:,ixBmax2, r_e) = one !c_sound0*T_star0**4
-
-      w(:,ixBmin2,:) = w(:,ixBmax2,:)
-
-      print*, "-----------------------------------"
-      print*, w(3,ixBmin2+1,rho_), w(3,ixBmin2+1,mom(1)), w(3,ixBmin2+1,mom(2)), w(3,ixBmin2+1,e_), w(3,ixBmin2+1,r_e)
-      print*, w(3,ixBmax2+1,rho_), w(3,ixBmax2+1,mom(1)), w(3,ixBmax2+1,mom(2)), w(3,ixBmax2+1,e_), w(3,ixBmax2+1,r_e)
+      w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))*perturbation(ixGmin2,&
+         ixGmax2,6)
+      w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2*perturbation(ixGmin2,&
+         ixGmax2,4)
+      w(:,ixBmax2, r_e) = c_sound0*T_star0**4*perturbation(ixGmin2,ixGmax2,3)
 
     case default
       call mpistop("BC not specified")
     end select
 
   end subroutine special_bound
+
+  function perturbation(ixOmin,ixOmax,n) result(pert_ampl)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixOmin,ixOmax, n
+    double precision :: pert_ampl(ixOmin:ixOmax)
+
+    integer :: i
+
+    do i =  ixOmin,ixOmax
+      pert_ampl(i) = sin(two*dpi*n*(i-ixOmin)/ixOmax)
+      pert_ampl(i) = pert_ampl(i)*sin((global_time/dt)*1.d-1)
+    enddo
+
+    pert_ampl = one + 1.d-2*pert_ampl
+
+  end function perturbation
 
 !==========================================================================================
 
@@ -176,9 +181,12 @@ subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
   double precision, intent(out)   :: gravity_field(ixImin1:ixImax1,&
      ixImin2:ixImax2,ndim)
 
+  ! phi = -GM/R
 
-  ! gravity_field(ixI^S,1) = zero
-  ! gravity_field(ixI^S,2) =
+  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
+  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
+     2) = 6.67e-8*M_star/(R_star+x(ixImin1:ixImax1,ixImin2:ixImax2,&
+     2))*(unit_density/unit_pressure)
 
 end subroutine set_gravitation_field
 

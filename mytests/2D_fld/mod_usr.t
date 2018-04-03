@@ -19,6 +19,11 @@ contains
     use mod_global_parameters
     use mod_usr_methods
 
+    !Fix dimensionless stuff here
+    unit_length        = 1.d0                                         ! cm
+    unit_numberdensity = 1.d3                                         ! cm^-3
+    unit_temperature   = 1.d0                                         ! K
+
     call set_coordinate_system("Cartesian_2D")
 
     ! Initialize units
@@ -51,10 +56,10 @@ contains
 subroutine initglobaldata_usr
   use mod_global_parameters
 
-  !Fix dimensionless stuff here
-  unit_length        = 1.d0                                         ! cm
-  unit_numberdensity = 1.d3                                         ! cm^-3
-  unit_temperature   = 1.d0                                         ! K
+
+
+
+
 
 end subroutine initglobaldata_usr
 

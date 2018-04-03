@@ -44,11 +44,13 @@ module mod_fld
     logical :: fld_Phot_Tiring = .true.
 
     !> public methods
+    !> these are called in mod_hd_phys
     public :: fld_add_source
-    public :: fld_get_radflux
-    public :: fld_get_fluxlimiter
     public :: fld_get_flux
     public :: fld_get_csound2
+    !> these are used in specialvar_output
+    public :: fld_get_radflux
+    public :: fld_get_fluxlimiter
 
   contains
 
@@ -171,11 +173,11 @@ module mod_fld
       !> Heating = c kappa E_rad
       radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
 
-      !> Write energy to file
-      if (it == 0) open(1,file='energy_out5')
-      write(1,222) it,global_time,w(5,5,iw_e)
-      if (it == it_max) close(1)
-      222 format(i8,2e15.5E3)
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out5')
+      ! write(1,222) it,global_time,w(5,5,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
 
       !> Energy equation source terms
       if (fld_HeatCool) then
@@ -461,7 +463,6 @@ module mod_fld
     end do
 
   end subroutine solve_tridiag
-
 
 
   subroutine ADI_boundary_conditions(ixI^L,E_m,w)

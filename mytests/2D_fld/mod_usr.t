@@ -132,6 +132,7 @@ end subroutine initglobaldata_usr
       w(:,ixBmax2, e_) = e_inflo !1.d0 !w(:,ixBmax2+1, e_)
       w(:,ixBmax2, r_e) = 4*unit_velocity/const_c* (T_eff/unit_temperature)**4*&
       fld_boltzman_cgs*unit_time**3 * unit_temperature**4 /(unit_length**3 *unit_density) !w(:,ixBmax2+1, r_e)
+
       w(:,ixBmin2,:) = w(:,ixBmax2,:)
 
     case default

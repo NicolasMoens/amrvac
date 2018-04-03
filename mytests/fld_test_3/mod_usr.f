@@ -107,11 +107,19 @@ end subroutine initglobaldata_usr
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = &
        one/(one-3.d0/5.d0)*(c_sound0**2+(kappa0*Flux0/c_light0-&
        g0)*(x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,2)-x(1,1,2)))
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) =  &
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
        c_sound0*T_star0**4-3*kappa0*Flux0/c_light0*(x(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2,2)-x(1,1,2))
 
-    print*, w(:, 10, e_)
+    print*, "#########################################"
+    print*, w(3,:,rho_)
+    print*, "#########################################"
+    print*, w(3,:,rho_)
+    print*, w(3,:,mom(1))
+    print*, w(3,:,mom(2))
+    print*, w(3,:,e_)
+    print*, w(3,:,r_e)
+    print*, "#########################################"
 
   end subroutine initial_conditions
 
@@ -137,11 +145,17 @@ end subroutine initglobaldata_usr
     select case (iB)
 
     case(3)
-      w(:,ixBmax2, rho_) =  one
+      w(:,ixBmax2, rho_) =  w(:,ixBmax2+1, rho_)
       w(:,ixBmax2, mom(1)) = zero
-      w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))
-      w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2
-      w(:,ixBmax2, r_e) = c_sound0*T_star0**4
+      w(:,ixBmax2, mom(2)) = w(:,ixBmax2+1, mom(2))
+      w(:,ixBmax2, e_) = one !one/(one-3.d0/5.d0)*c_sound0**2
+      w(:,ixBmax2, r_e) = one !c_sound0*T_star0**4
+
+      w(:,ixBmin2,:) = w(:,ixBmax2,:)
+
+      print*, "-----------------------------------"
+      print*, w(3,ixBmin2+1,rho_), w(3,ixBmin2+1,mom(1)), w(3,ixBmin2+1,mom(2)), w(3,ixBmin2+1,e_), w(3,ixBmin2+1,r_e)
+      print*, w(3,ixBmax2+1,rho_), w(3,ixBmax2+1,mom(1)), w(3,ixBmax2+1,mom(2)), w(3,ixBmax2+1,e_), w(3,ixBmax2+1,r_e)
 
     case default
       call mpistop("BC not specified")

@@ -86,7 +86,7 @@ contains
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, hd_list, end=111)
-111    close(unitpar)
+       111    close(unitpar)
     end do
 
   end subroutine hd_read_params

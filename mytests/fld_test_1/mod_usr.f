@@ -140,13 +140,15 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
      nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
 
-  double precision                   :: rad_flux(ixImin1:ixImax1,&
-     ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
-      fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
-     ixImin2:ixImax2)
+  double precision                   :: rad_flux(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2,1:ndim), rad_pressure(ixOmin1:ixOmax1,ixOmin2:ixOmax2),&
+      fld_lambda(ixOmin1:ixOmax1,ixOmin2:ixOmax2), fld_R(ixOmin1:ixOmax1,&
+     ixOmin2:ixOmax2)
 
   call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_flux, rad_pressure)
+     ixOmax1,ixOmax2, rad_flux)
+  call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
+     ixOmax1,ixOmax2, rad_pressure)
   call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
      ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
 

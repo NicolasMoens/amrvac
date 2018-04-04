@@ -23,7 +23,7 @@
  &stoplist
    !time_max = 2.0d-3
    dtmin = 1.0d-20
-   it_max = 10
+   it_max = 2
 /
 
  &methodlist
@@ -61,7 +61,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 1.d-12
+  dtpar = 1.d-3
  /
 
  &hd_list

@@ -511,10 +511,10 @@ module mod_fld
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision :: rad_pressure(ixO^S)
-    double precision :: temperature(ixI^S), div_v(ixI^S), vel(ixI^S,1:ndim)
-    double precision :: a1(ixI^S), a2(ixI^S), a3(ixI^S)
-    double precision :: c0(ixI^S), c1(ixI^S)
-    double precision :: e_gas(ixI^S), E_rad(ixI^S)
+    double precision :: temperature(ixO^S), div_v(ixI^S), vel(ixI^S,1:ndim)
+    double precision :: a1(ixO^S), a2(ixO^S), a3(ixO^S)
+    double precision :: c0(ixO^S), c1(ixO^S)
+    double precision :: e_gas(ixO^S), E_rad(ixO^S)
 
     integer :: i,j,idir
 
@@ -529,13 +529,13 @@ module mod_fld
 
     !> calc photon tiring term
     do idir=1,ndim
-      vel(ixO^S,idir)= w(ixO^S,iw_mom(idir))/w(ixO^S,iw_rho)
+      vel(ixI^S,idir)= w(ixI^S,iw_mom(idir))/w(ixI^S,iw_rho)
     enddo
 
     call divvector(vel,ixI^L,ixO^L,div_v)
 
-    e_gas(ixI^S) = w(ixI^S,iw_e)
-    E_rad(ixI^S) = w(ixI^S,iw_r_e)
+    e_gas(ixO^S) = w(ixO^S,iw_e)
+    E_rad(ixO^S) = w(ixO^S,iw_r_e)
 
     !> Calculate coefficients for polynomial
     a1(ixO^S) = 4*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*(temperature(ixO^S)/e_gas(ixO^S))**4.d0*dt
@@ -549,6 +549,8 @@ module mod_fld
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
       print*, i,j,"--------------------"
+      print*, "Temperature"
+      print*, temperature(i,j)
       print*, "Rad_pressure"
       print*, rad_pressure(i,j)
       print*, "a1(i,j), a2(i,j), a3(i,j)"

@@ -117,8 +117,6 @@ end subroutine initglobaldata_usr
     w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
     w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1.d0
 
-    print*, it, w(4,4,e_)
-
   end subroutine constant_r_e
 
 !==========================================================================================

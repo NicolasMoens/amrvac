@@ -110,8 +110,6 @@ end subroutine initglobaldata_usr
     w(ixI^S,mom(:)) = zero
     w(ixI^S,r_e) = 1.d0
 
-    print*, it, w(4,4,e_)
-
   end subroutine constant_r_e
 
 !==========================================================================================
@@ -131,9 +129,10 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   double precision                   :: w(ixI^S,nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
 
-  double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
+  double precision                   :: rad_flux(ixO^S,1:ndim), rad_pressure(ixO^S), fld_lambda(ixO^S), fld_R(ixO^S)
 
-  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
+  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_pressure)
   call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
   w(ixO^S,nw+1)=rad_flux(ixO^S,1)

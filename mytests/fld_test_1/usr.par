@@ -16,14 +16,14 @@
    itsave(1,1)     = 0
    itsave(1,2)     = 0
    !dtsave_dat     = 2.d-4
-   !ditsave_dat     = 1000000000000
-   !ditsave_log     = 1000000000000
+   !ditsave_dat     = 10000
+   !ditsave_log     = 10000
 /
 
  &stoplist
    !time_max = 2.0d-3
-   dtmin = 1.0d-4
-   it_max = 20000
+   dtmin = 1.0d-20
+   it_max = 10
 /
 
  &methodlist
@@ -46,10 +46,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 4
-   domain_nx2         = 4
-   block_nx1          = 4
-   block_nx2          = 4
+   domain_nx1         = 2
+   domain_nx2         = 2
+   block_nx1          = 2
+   block_nx2          = 2
    xprobmin1       =  -0.5d0
    xprobmax1       =  0.5d0
    xprobmin2       =  0.0d0
@@ -60,8 +60,8 @@
  /
 
  &paramlist
-  courantpar       = 0.6d0
-  !dtpar = 1.d-12
+  !courantpar       = 0.6d0
+  dtpar = 1.d-12
  /
 
  &hd_list
@@ -76,7 +76,7 @@
  fld_split = .false.
  fld_numdt = 50
  fld_bisect_tol = 1.d-3
- fld_Diffusion = .false.
  fld_Rad_force = .false.
+ fld_Diffusion = .false.
  fld_Energy_interact = .true.
  /

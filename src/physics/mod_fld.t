@@ -125,23 +125,12 @@ module mod_fld
     logical, intent(in) :: energy,qsourcesplit
     logical, intent(inout) :: active
 
-    double precision :: temperature(ixI^S)
-    double precision :: rad_flux(ixI^S,1:ndim)
-    double precision :: rad_pressure(ixI^S)
-    double precision :: div_v(ixI^S), vel(ixI^S,1:ndim)
+    double precision :: rad_flux(ixO^S,1:ndim)
 
-    double precision :: radiation_force(ixI^S,1:ndim)
-    double precision :: radiation_cooling(ixI^S)
-    double precision :: radiation_heating(ixI^S)
-    double precision :: photon_tiring(ixI^S)
+    double precision :: radiation_force(ixO^S,1:ndim)
+
 
     integer :: idir, i
-
-    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    print*, it
-    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
 
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
@@ -152,10 +141,11 @@ module mod_fld
         call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
       endif
 
-      !> Calculate the radiative flux using the FLD Approximation
-      call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux, rad_pressure)
-
       if (fld_Rad_force) then
+
+        !> Calculate the radiative flux using the FLD Approximation
+        call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux)
+
         do idir = 1,ndir
           !> Radiation force = kappa*rho/c *Flux
           radiation_force(ixO^S,idir) = fld_kappa*wCT(ixO^S,iw_rho)/fld_speedofligt_0*rad_flux(ixO^S, idir)
@@ -168,8 +158,12 @@ module mod_fld
 
       if (fld_Energy_interact) then
         print*, "Before Calling Energy interaction"
+        print*, w(ixI^S,iw_r_e)
+        print*, w(ixI^S,iw_e)
         call Energy_interaction(w, x, ixI^L, ixO^L)
         print*, "Finished Calling Energy interaction"
+        print*, w(ixI^S,iw_r_e)
+        print*, w(ixI^S,iw_e)
       endif
 
       ! !> Write energy to file
@@ -178,7 +172,7 @@ module mod_fld
       ! if (it == it_max) close(1)
       ! 222 format(i8,2e15.5E3)
 
-      print*, "LAST LINE IN FLD_ADDSOURCE"
+      print*, "LAST LINE IN FLD_ADD_SOURCE"
 
     end if
 
@@ -195,7 +189,7 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out) :: fld_R(ixI^S), fld_lambda(ixI^S)
     double precision ::  normgrad2(ixI^S)
-    double precision :: grad_r_e(ixI^S, 1:ndim)
+    double precision :: grad_r_e(ixO^S, 1:ndim)
     integer :: idir
 
     !> Calculate R everywhere
@@ -216,15 +210,15 @@ module mod_fld
 
   !> Calculate Radiation Flux
   !> Returns Radiation flux and radiation pressure
-  subroutine fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
+  subroutine fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
     use mod_global_parameters
 
     integer, intent(in)          :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
-    double precision, intent(out):: rad_flux(ixI^S, 1:ndim), rad_pressure(ixI^S)
-    double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S), f(ixI^S)
-    double precision :: grad_r_e(ixI^S, 1:ndim)
+    double precision, intent(out):: rad_flux(ixO^S, 1:ndim)
+    double precision :: fld_lambda(ixO^S), fld_R(ixO^S), normgrad2(ixO^S), f(ixO^S)
+    double precision :: grad_r_e(ixO^S, 1:ndim)
     integer :: idir
 
     !> Calculate R everywhere
@@ -246,12 +240,6 @@ module mod_fld
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
 
-    !> Calculate radiation pressure
-    !> P = (lambda + lambda^2 R^2)*E
-    f(ixO^S) = fld_lambda(ixO^S) + fld_lambda(ixO^S)**2 * fld_R(ixO^S)**2
-    f(ixO^S) = one/two*(one-f(ixO^S)) + one/two*(3.d0*f(ixO^S) - one)
-    rad_pressure(ixO^S) = f(ixO^S) * w(ixO^S, iw_r_e)
-
   end subroutine fld_get_radflux
 
 
@@ -263,9 +251,9 @@ module mod_fld
     integer, intent(in)          :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
-    double precision, intent(out):: rad_pressure(ixI^S)
-    double precision :: fld_lambda(ixI^S), fld_R(ixI^S), normgrad2(ixI^S), f(ixI^S)
-    double precision :: grad_r_e(ixI^S, 1:ndim)
+    double precision, intent(out):: rad_pressure(ixO^S)
+    double precision :: fld_lambda(ixO^S), fld_R(ixO^S), normgrad2(ixO^S), f(ixO^S)
+    double precision :: grad_r_e(ixO^S, 1:ndim)
     integer :: idir
 
     !> Calculate R everywhere
@@ -522,7 +510,7 @@ module mod_fld
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
-    double precision :: rad_pressure(ixI^S)
+    double precision :: rad_pressure(ixO^S)
     double precision :: temperature(ixI^S), div_v(ixI^S), vel(ixI^S,1:ndim)
     double precision :: a1(ixI^S), a2(ixI^S), a3(ixI^S)
     double precision :: c0(ixI^S), c1(ixI^S)
@@ -537,8 +525,7 @@ module mod_fld
     call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
 
     !> calc Temperature as p/rho
-    !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
-    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho)) !????
+    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))
 
     !> calc photon tiring term
     do idir=1,ndim
@@ -561,8 +548,15 @@ module mod_fld
     !> Loop over every cell for bisection method
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
-      print*, i,j, "-----------------",e_gas(i,j)
+      print*, i,j,"--------------------"
+      print*, "Rad_pressure"
+      print*, rad_pressure(i,j)
+      print*, "a1(i,j), a2(i,j), a3(i,j)"
+      print*, a1(i,j), a2(i,j), a3(i,j)
+      print*, "ARGUMENTS:"
+      print*, e_gas(i,j), E_rad(i,j), c0(i,j), c1(i,j)
       call Bisection_method(e_gas(i,j), E_rad(i,j), c0(i,j), c1(i,j))
+      print*,"--------------------",i,j
     enddo
     enddo
 
@@ -587,6 +581,14 @@ module mod_fld
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
 
+    print*, "The updated radiation and gas energy arrays are:"
+    print*, E_rad(ixO^S)
+    print*, e_gas(ixO^S)
+
+    print*, "The updated radiation and gas energy terms in the w-array are:"
+    print*, w(ixI^S,iw_r_e)
+    print*, w(ixI^S,iw_e)
+
   end subroutine Energy_interaction
 
 
@@ -600,13 +602,18 @@ module mod_fld
     double precision :: bisect_a, bisect_b, bisect_c
 
     bisect_a = zero
-    bisect_b = max(abs(c0/c1),abs(c0)**(1.d0/4.d0))
+    bisect_b = min(abs(c0/c1),abs(c0)**(1.d0/4.d0))
 
     do while (abs(bisect_b-bisect_a) .gt. fld_bisect_tol*e_gas)
       bisect_c = (bisect_a + bisect_b)/two
 
       if (Polynomial_Bisection(bisect_a, c0, c1)*&
       Polynomial_Bisection(bisect_b, c0, c1) .le. zero) then
+
+        print*, "Doing something usefull"
+        print*, Polynomial_Bisection(bisect_a, c0, c1), &
+        Polynomial_Bisection(bisect_b, c0, c1), &
+        Polynomial_Bisection(bisect_c, c0, c1)
 
         if (Polynomial_Bisection(bisect_a, c0, c1)*&
         Polynomial_Bisection(bisect_c, c0, c1) .le. zero) then
@@ -621,9 +628,13 @@ module mod_fld
 
       else
 
+        print*, "c0, c1"
         print*, c0, c1
+        print*, "c0, abs(c0/c1), abs(c0)**(1.d0/4.d0)"
         print*, c0, abs(c0/c1), abs(c0)**(1.d0/4.d0)
+        print*, "bisect_a, bisect_b, e_gas"
         print*, bisect_a, bisect_b, e_gas
+        print*, "f(a), f(b)"
         print*, Polynomial_Bisection(bisect_a, c0, c1), Polynomial_Bisection(bisect_b, c0, c1)
 
         bisect_a = e_gas
@@ -665,47 +676,40 @@ module mod_fld
     double precision, intent(out)   :: csound2(ixI^S)
     double precision :: pth(ixI^S), prad(ixI^S)
 
-    print*,"GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA"
-
     call fld_get_radpress(w,x,ixI^L,ixO^L,prad)
-
-    print*,"GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA"
-
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
+
     csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
     csound2(ixO^S)=max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
 
   end subroutine fld_get_csound2
 
 
-  subroutine grad(q,ixI^L,ix^L,idir,x,gradq)
+  subroutine grad(q,ixI^L,ixO^L,idir,x,gradq)
     ! Compute the true gradient of a scalar q within ixL in direction idir ie :
     !  - in cylindrical : d_/dr , (1/r)*d_/dth , d_/dz
     !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
     use mod_global_parameters
 
-    integer, intent(in) :: ixI^L, ix^L, idir
-    double precision, intent(in) :: x(ixI^S,1:ndim), q(ixI^S)
-    double precision, intent(out) :: gradq(ix^S)
+    integer, intent(in) :: ixI^L, ixO^L, idir
+    double precision, intent(in) :: q(ixI^S), x(ixI^S,1:ndim)
+    double precision, intent(out) ::  gradq(ixO^S)
+
     integer :: jx^L, hx^L
     !-----------------------------------------------------------------------------
-    jx^L=ix^L+kr(idir,^D);
-    hx^L=ix^L-kr(idir,^D);
-
-    gradq(ix^S)=(q(jx^S)-q(hx^S))/&
-    (x(jx^S,idir)-x(hx^S,idir))
-
+    jx^L=ixO^L+kr(idir,^D);
+    hx^L=ixO^L-kr(idir,^D);
+    gradq(ixO^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
     select case (typeaxial)
     case('slab') ! nothing to do
     case('cylindrical')
-      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
+      if (idir==phi_) gradq(ixO^S)=gradq(ixO^S)/ x(ixO^S,r_)
     case('spherical')
-      if (idir==2   ) gradq(ix^S)=gradq(ix^S)/ x(ix^S,r_)
-      if (idir==phi_) gradq(ix^S)=gradq(ix^S)/(x(ix^S,r_)*dsin(x(ix^S,2)))
+      if (idir==2   ) gradq(ixO^S)=gradq(ixO^S)/ x(ixO^S,r_)
+      if (idir==phi_) gradq(ixO^S)=gradq(ixO^S)/(x(ixO^S,r_)*dsin(x(ixO^S,2)))
     case default
       call mpistop('Unknown geometry')
     end select
-
-  end subroutine grad
+end subroutine grad
 
 end module mod_fld

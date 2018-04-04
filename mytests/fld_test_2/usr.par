@@ -74,4 +74,5 @@
   fld_mu = 0.6d0
   fld_split = .false.
   fld_numdt = 50
+  fld_Energy_interact = .false.
  /

@@ -48,6 +48,7 @@ module mod_fld
     public :: fld_get_csound2
     !> these are used in specialvar_output
     public :: fld_get_radflux
+    public :: fld_get_radpress
     public :: fld_get_fluxlimiter
 
   contains
@@ -160,55 +161,17 @@ module mod_fld
       endif
 
       if (fld_Energy_interact) then
+        print*, "Before Calling Energy interaction"
         call Energy_interaction(w, x, ixI^L, ixO^L)
+        print*, "Finished Calling Energy interaction"
       endif
 
-      print*, w(10,10,:)
+      !> Write energy to file
+      if (it == 0) open(1,file='energy_out5')
+      write(1,222) it,global_time,w(5,5,iw_e)
+      if (it == it_max) close(1)
+      222 format(i8,2e15.5E3)
 
-      ! !> Get pressure
-      ! call phys_get_pthermal(wCT,x,ixI^L,ixO^L,temperature)
-      !
-      ! !> calc Temperature as p/rho
-      ! !temperature(ixI^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho))
-      ! temperature(ixO^S)=(temperature(ixO^S)/wCT(ixO^S,iw_rho)) !????
-      !
-      ! !> Cooling = 4 pi kappa B = 4 kappa sigma T**4
-      ! radiation_cooling(ixO^S) = 4.d0*fld_kappa*wCT(ixO^S,iw_rho)*fld_sigma_0*temperature(ixO^S)**4
-      ! !> Heating = c kappa E_rad
-      ! radiation_heating(ixO^S) = fld_speedofligt_0*fld_kappa*wCT(ixO^S,iw_rho)*wCT(ixO^S,iw_r_e)
-
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out5')
-      ! write(1,222) it,global_time,w(5,5,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
-
-      ! !> Energy equation source terms
-      ! if (fld_HeatCool) then
-      !   w(ixO^S,iw_e) = w(ixO^S,iw_e) &
-      !      + qdt * radiation_heating(ixO^S) &
-      !      - qdt * radiation_cooling(ixO^S)
-      ! endif
-      !
-      ! !> Radiation Energy source term
-      ! if (fld_HeatCool_rad) then
-      !   w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-      !      - qdt * radiation_heating(ixO^S) &
-      !      + qdt * radiation_cooling(ixO^S)
-      ! endif
-      !
-      ! !> Photon tiring
-      ! if (fld_Phot_Tiring) then
-      !   do idir=1,ndim
-      !     vel(ixI^S,idir)= wCT(ixI^S,iw_mom(idir))/wCT(ixI^S,iw_rho)
-      !   enddo
-      !
-      !   call divvector(vel,ixI^L,ixO^L,div_v)
-      !   photon_tiring(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)
-      !
-      !   w(ixO^S,iw_r_e) = w(ixO^S,iw_r_e) &
-      !      - qdt * photon_tiring(ixO^S)
-      ! endif
     end if
 
 
@@ -248,7 +211,6 @@ module mod_fld
   !> Returns Radiation flux and radiation pressure
   subroutine fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux, rad_pressure)
     use mod_global_parameters
-    !use geometry, only: gradient
 
     integer, intent(in)          :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw)
@@ -260,29 +222,28 @@ module mod_fld
 
     !> Calculate R everywhere
     !> |grad E|/(rho kappa E)
-    normgrad2(ixI^S) = zero
+    normgrad2(ixO^S) = zero
     do idir = 1,ndir
-      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
-      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixI^S,idir))
-      normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**2
     end do
-    fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+    fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+    fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
 
     !> Calculate the Flux using the fld closure relation
     !> F = -c*lambda/(kappa*rho) *grad E
     do idir = 1,ndir
-      rad_flux(ixI^S, idir) = -fld_speedofligt_0*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho)) *grad_r_e(ixI^S,idir)
+      rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
 
     !> Calculate radiation pressure
     !> P = (lambda + lambda^2 R^2)*E
-    f(ixI^S) = fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2
-    f(ixI^S) = one/two*(one-f(ixI^S)) + one/two*(3*f(ixI^S) - one)
-    rad_pressure(ixI^S) = f(ixI^S) * w(ixI^S, iw_r_e)
+    f(ixO^S) = fld_lambda(ixO^S) + fld_lambda(ixO^S)**2 * fld_R(ixO^S)**2
+    f(ixO^S) = one/two*(one-f(ixO^S)) + one/two*(3.d0*f(ixO^S) - one)
+    rad_pressure(ixO^S) = f(ixO^S) * w(ixO^S, iw_r_e)
 
   end subroutine fld_get_radflux
 
@@ -291,7 +252,6 @@ module mod_fld
   !> Returns Radiation Pressure
   subroutine fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
     use mod_global_parameters
-    !use geometry, only: gradient
 
     integer, intent(in)          :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw)
@@ -303,23 +263,25 @@ module mod_fld
 
     !> Calculate R everywhere
     !> |grad E|/(rho kappa E)
-    normgrad2(ixI^S) = zero
+    normgrad2(ixO^S) = zero
+
     do idir = 1,ndir
-      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
-      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixI^S,idir))
-      normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**two
     end do
-    fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+
+    fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+    fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
 
     !> Calculate radiation pressure
     !> P = (lambda + lambda^2 R^2)*E
-    f(ixI^S) = fld_lambda(ixI^S) + fld_lambda(ixI^S)**2 * fld_R(ixI^S)**2
-    f(ixI^S) = one/two*(one-f(ixI^S)) + one/two*(3*f(ixI^S) - one)
-    rad_pressure(ixI^S) = f(ixI^S) * w(ixI^S, iw_r_e)
+    f(ixO^S) = fld_lambda(ixO^S) + fld_lambda(ixO^S)**two * fld_R(ixO^S)**two
+    f(ixO^S) = one/two*(one-f(ixO^S)) + one/two*(3.d0*f(ixO^S) - one)
+
+    rad_pressure(ixO^S) = f(ixO^S) * w(ixO^S, iw_r_e)
 
   end subroutine fld_get_radpress
 
@@ -407,6 +369,11 @@ module mod_fld
 
     !calculate diffusion coefficient
     D_center(ixI^S) = fld_speedofligt_0*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho))
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!   SUBROUTINE GRAD ONLY DEFINED AT ixO, NOT ixI                   !!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
     !> Go from cell center to cell face
     do i = ixImin1+1, ixImax1
@@ -561,7 +528,7 @@ module mod_fld
     integer :: i,j,idir
 
     !> Calculate the radiative flux using the FLD Approximation
-    call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
+    call fld_get_radpress(w,x,ixI^L,ixO^L,rad_pressure)
 
     !> Get pressure
     call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
@@ -577,23 +544,26 @@ module mod_fld
 
     call divvector(vel,ixI^L,ixO^L,div_v)
 
-    e_gas(ixO^S) = w(ixO^S,iw_e)
-    E_rad(ixO^S) = w(ixO^S,iw_r_e)
+    e_gas(ixI^S) = w(ixI^S,iw_e)
+    E_rad(ixI^S) = w(ixI^S,iw_r_e)
 
     !> Calculate coefficients for polynomial
     a1(ixO^S) = 4*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*(temperature(ixO^S)/e_gas(ixO^S))**4.d0*dt
     a2(ixO^S) = fld_speedofligt_0*fld_kappa*w(ixO^S,iw_rho)*dt
     a3(ixO^S) = div_v(ixO^S)*rad_pressure(ixO^S)/E_rad(ixO^S)*dt
 
-    c0 = ((one + a1 + a3)*e_gas + a2*E_rad)/(a1*(one + a3))
-    c1 = (one + a1 + a3)/(a1*(one + a3))
+    c0(ixO^S) = ((one + a1(ixO^S) + a3(ixO^S))*e_gas(ixO^S) + a2(ixO^S)*E_rad(ixO^S))/(a1(ixO^S)*(one + a3(ixO^S)))
+    c1(ixO^S) = (one + a1(ixO^S) + a3(ixO^S))/(a1(ixO^S)*(one + a3(ixO^S)))
 
+    !> Loop over every cell for bisection method
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
       print*, i,j, "-----------------",e_gas(i,j)
       call Bisection_method(e_gas(i,j), E_rad(i,j), c0(i,j), c1(i,j))
     enddo
     enddo
+
+    print*, "DONE WITH BISECTING"
 
     !> Update gas-energy in w
     w(ixO^S,iw_e) = e_gas(ixO^S)
@@ -613,6 +583,9 @@ module mod_fld
 
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
+
+    print*, "Finished Energy interaction"
+    print*, shape(w)
 
   end subroutine Energy_interaction
 
@@ -693,15 +666,19 @@ module mod_fld
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(out)   :: csound2(ixI^S)
 
-    double precision :: pth(ixI^S), prad(ixI^S), rad_flux(ixI^S,1:ndim)
+    double precision :: pth(ixI^S), prad(ixI^S)
 
-    call fld_get_radflux(w,x,ixI^L,ixO^L,rad_flux,prad)
+    print*,"GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA"
+
+    call fld_get_radpress(w,x,ixI^L,ixO^L,prad)
+
+    print*,"GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA"
+
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
     csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
     csound2(ixO^S)=max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
 
   end subroutine fld_get_csound2
-
 
 
   subroutine grad(q,ixI^L,ix^L,idir,x,gradq)
@@ -710,14 +687,17 @@ module mod_fld
     !  - in spherical   : d_/dr , (1/r)*d_/dth , (1/rsinth)*d_/dphi
     use mod_global_parameters
 
-    integer :: ixI^L, ix^L, idir
-    double precision :: q(ixI^S), gradq(ixI^S)
-    double precision, intent(in) :: x(ixI^S,1:ndim)
+    integer, intent(in) :: ixI^L, ix^L, idir
+    double precision, intent(in) :: x(ixI^S,1:ndim), q(ixI^S)
+    double precision, intent(out) :: gradq(ix^S)
     integer :: jx^L, hx^L
     !-----------------------------------------------------------------------------
     jx^L=ix^L+kr(idir,^D);
     hx^L=ix^L-kr(idir,^D);
-    gradq(ix^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
+
+    gradq(ix^S)=(q(jx^S)-q(hx^S))/&
+    (x(jx^S,idir)-x(hx^S,idir))
+
     select case (typeaxial)
     case('slab') ! nothing to do
     case('cylindrical')
@@ -728,6 +708,7 @@ module mod_fld
     case default
       call mpistop('Unknown geometry')
     end select
+
   end subroutine grad
 
 end module mod_fld

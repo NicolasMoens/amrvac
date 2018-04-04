@@ -71,12 +71,12 @@
  /
 
  &fld_list
-  fld_kappa = 0.4d0
-  fld_mu = 0.6d0
-  fld_split = .false.
-  fld_Diffusion = .false.
-  fld_Rad_force = .false.
-  fld_HeatCool = .true.
-  fld_HeatCool_rad = .false.
-  fld_Phot_Tiring = .false.
+ fld_kappa = 0.34d0
+ fld_mu = 0.6d0
+ fld_split = .false.
+ fld_numdt = 50
+ fld_bisect_tol = 1.d-3
+ fld_Diffusion = .false.
+ fld_Rad_force = .false.
+ fld_Energy_interact = .true.
  /

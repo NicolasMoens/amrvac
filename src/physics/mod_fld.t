@@ -137,6 +137,12 @@ module mod_fld
 
     integer :: idir, i
 
+    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+    print*, it
+    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+    print*, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
@@ -152,11 +158,11 @@ module mod_fld
       if (fld_Rad_force) then
         do idir = 1,ndir
           !> Radiation force = kappa*rho/c *Flux
-          radiation_force(ixI^S,idir) = fld_kappa*wCT(ixI^S,iw_rho)/fld_speedofligt_0*rad_flux(ixI^S, idir)
+          radiation_force(ixO^S,idir) = fld_kappa*wCT(ixO^S,iw_rho)/fld_speedofligt_0*rad_flux(ixO^S, idir)
 
           !> Momentum equation source term
-          w(ixI^S,iw_mom(idir)) = w(ixI^S,iw_mom(idir)) &
-              + qdt * radiation_force(ixI^S,idir)
+          w(ixO^S,iw_mom(idir)) = w(ixO^S,iw_mom(idir)) &
+              + qdt * radiation_force(ixO^S,idir)
         enddo
       endif
 
@@ -166,11 +172,13 @@ module mod_fld
         print*, "Finished Calling Energy interaction"
       endif
 
-      !> Write energy to file
-      if (it == 0) open(1,file='energy_out5')
-      write(1,222) it,global_time,w(5,5,iw_e)
-      if (it == it_max) close(1)
-      222 format(i8,2e15.5E3)
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out5')
+      ! write(1,222) it,global_time,w(5,5,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
+
+      print*, "LAST LINE IN FLD_ADDSOURCE"
 
     end if
 
@@ -192,17 +200,16 @@ module mod_fld
 
     !> Calculate R everywhere
     !> |grad E|/(rho kappa E)
-    normgrad2(ixI^S) = zero
+    normgrad2(ixO^S) = zero
     do idir = 1,ndir
-      !call gradient(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,grad_r_e(ixI^S,idir)) !!! IS IT WRONG TO USE ixO^L?????
-      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixI^S,idir))
-      normgrad2(ixI^S) = normgrad2(ixI^S) + grad_r_e(ixI^S,idir)**2
+      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**2
     end do
-    fld_R(ixI^S) = dsqrt(normgrad2(ixI^S))/(fld_kappa*w(ixI^S,iw_rho)*w(ixI^S,r_e))
+    fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixI^S) = (2+fld_R(ixI^S))/(6+3*fld_R(ixI^S)+fld_R(ixI^S)**2)
+    fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
 
   end subroutine fld_get_fluxlimiter
 
@@ -231,7 +238,7 @@ module mod_fld
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
+    fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
 
     !> Calculate the Flux using the fld closure relation
     !> F = -c*lambda/(kappa*rho) *grad E
@@ -508,6 +515,7 @@ module mod_fld
 
   subroutine Energy_interaction(w, x, ixI^L, ixO^L)
     use mod_global_parameters
+    use mod_variables
     use mod_physics, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
@@ -519,11 +527,6 @@ module mod_fld
     double precision :: a1(ixI^S), a2(ixI^S), a3(ixI^S)
     double precision :: c0(ixI^S), c1(ixI^S)
     double precision :: e_gas(ixI^S), E_rad(ixI^S)
-
-    double precision :: hd_gamma = 5.d0/3.d0
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!  WHY DO I NEED TO DEFINE GAMMA HERE?!?!?8?8?        !!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     integer :: i,j,idir
 
@@ -573,7 +576,7 @@ module mod_fld
     call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
 
     !> calc new Temperature as p/rho
-    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho)) !????
+    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))
 
     !> Update a1
     a1(ixO^S) = 4*fld_kappa*w(ixO^S,iw_rho)*fld_sigma_0*(temperature(ixO^S)/e_gas(ixO^S))**4.d0*dt
@@ -583,9 +586,6 @@ module mod_fld
 
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
-
-    print*, "Finished Energy interaction"
-    print*, shape(w)
 
   end subroutine Energy_interaction
 
@@ -607,8 +607,6 @@ module mod_fld
 
       if (Polynomial_Bisection(bisect_a, c0, c1)*&
       Polynomial_Bisection(bisect_b, c0, c1) .le. zero) then
-
-        print*, "good iteration"
 
         if (Polynomial_Bisection(bisect_a, c0, c1)*&
         Polynomial_Bisection(bisect_c, c0, c1) .le. zero) then
@@ -665,7 +663,6 @@ module mod_fld
     double precision, intent(in)    :: w(ixI^S,nw), hd_gamma
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(out)   :: csound2(ixI^S)
-
     double precision :: pth(ixI^S), prad(ixI^S)
 
     print*,"GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA,GSCHAFTL-HUABA"

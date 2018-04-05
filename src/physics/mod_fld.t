@@ -71,6 +71,7 @@ module mod_fld
     end do
   end subroutine fld_params_read
 
+
   !> Set radiation energy variable
   !> In  Erg/cm^3
   function var_set_radiation_energy() result(iw)
@@ -86,8 +87,8 @@ module mod_fld
     prim_wnames(nwflux) = 'r_e'
   end function var_set_radiation_energy
 
-  subroutine fld_init()
 
+  subroutine fld_init()
     use mod_global_parameters
     use mod_variables
 
@@ -108,13 +109,12 @@ module mod_fld
 
     !> Dimensionless Boltzman constante sigma
     fld_sigma_0 = 5.67051d-5*(unit_temperature**4.d0)/(unit_velocity*unit_pressure)
-
   end subroutine fld_init
+
 
   !> w[iw]=w[iw]+qdt*S[wCT,qtC,x] where S is the source based on wCT within ixO
   subroutine fld_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
        energy,qsourcesplit,active)
-
     use mod_constants
     use mod_global_parameters
     use mod_usr_methods
@@ -137,8 +137,6 @@ module mod_fld
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
-
-      print*, dt
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
@@ -171,9 +169,9 @@ module mod_fld
       if (it == it_max) close(1)
       222 format(i8,2e15.5E3)
 
+      print*, dt
+
     end if
-
-
   end subroutine fld_add_source
 
 
@@ -184,8 +182,8 @@ module mod_fld
     integer, intent(in)          :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
-    double precision, intent(out) :: fld_R(ixI^S), fld_lambda(ixI^S)
-    double precision ::  normgrad2(ixI^S)
+    double precision, intent(out) :: fld_R(ixO^S), fld_lambda(ixO^S)
+    double precision ::  normgrad2(ixO^S)
     double precision :: grad_r_e(ixO^S, 1:ndim)
     integer :: idir
 
@@ -201,7 +199,6 @@ module mod_fld
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
     fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
-
   end subroutine fld_get_fluxlimiter
 
 
@@ -236,7 +233,6 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
-
   end subroutine fld_get_radflux
 
 
@@ -274,7 +270,6 @@ module mod_fld
     f(ixO^S) = one/two*(one-f(ixO^S)) + one/two*(3.d0*f(ixO^S) - one)
 
     rad_pressure(ixO^S) = f(ixO^S) * w(ixO^S, iw_r_e)
-
   end subroutine fld_get_radpress
 
 
@@ -290,9 +285,7 @@ module mod_fld
     else
       f(ixO^S, iw_r_e) = zero
     endif
-
   end subroutine fld_get_flux
-
 
 
   subroutine Evolve_ADI(w, x, w_max, ixI^L, ixO^L)
@@ -304,7 +297,7 @@ module mod_fld
     double precision :: E_m(ixI^S), E_n(ixI^S)
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
-    double precision :: Evec1(ixImax1), Evec2(ixImax2)
+    double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
     double precision :: dw, delta_x
     integer g, h, m, j
 
@@ -320,13 +313,11 @@ module mod_fld
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
-
       do j = ixImin2,ixImax2
         Evec1 = E_m(:,j)
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
         E_m(:,j) = Evec1
       enddo
-
       call ADI_boundary_conditions(ixI^L,E_m,w)
 
       !> Setup matrix and vector for sweeping in direction 2
@@ -337,11 +328,10 @@ module mod_fld
         E_m(j,:) = Evec2
       enddo
       call ADI_boundary_conditions(ixI^L,E_m,w)
-
     enddo
 
     w(ixO^S,iw_r_e) = E_m(ixO^S)
-
+    ! print*, "After Evolve ADI: ", w(ixOmax1,ixOmax2,iw_r_e)
   end subroutine Evolve_ADI
 
 
@@ -355,21 +345,35 @@ module mod_fld
     double precision, intent(in) :: E_n(ixI^S), E_m(ixI^S)
     double precision, intent(out):: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision, intent(out):: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
-    double precision :: fld_lambda(ixI^S), fld_R(ixI^S)
+    double precision :: fld_lambda(ixO^S), fld_R(ixO^S)
     double precision :: D_center(ixI^S), D(ixI^S,1:ndim), h, beta(ixImax), delta_x
     double precision :: grad_r_e(ixI^S, 1:ndim)
     integer :: idir,i,j
 
-    !calculate lambda
+    !> calculate lambda
     call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-    !calculate diffusion coefficient
-    D_center(ixI^S) = fld_speedofligt_0*fld_lambda(ixI^S)/(fld_kappa*w(ixI^S,iw_rho))
+    !> calculate diffusion coefficient
+    D_center(ixO^S) = fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho))
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!   SUBROUTINE GRAD ONLY DEFINED AT ixO, NOT ixI                   !!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !> Extrapolate lambda to ghostcells
+    !> Edges
+    do i = 0,nghostcells-1
+      D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
+      D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
+      D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
+      D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
+    end do
 
+    !> Corners
+    do i = 0,nghostcells-1
+      do j = 0, nghostcells-1
+        D_center(ixImin1+i,ixImax2-j) = D_center(ixImin1+nghostcells,ixImax2-nghostcells)
+        D_center(ixImax1-i,ixImax2-j) = D_center(ixImax1-nghostcells,ixImax2-nghostcells)
+        D_center(ixImin1+i,ixImin2+j) = D_center(ixImin1+nghostcells,ixImin2+nghostcells)
+        D_center(ixImax1-i,ixImin2+j) = D_center(ixImax1-nghostcells,ixImin2+nghostcells)
+      end do
+    end do
 
     !> Go from cell center to cell face
     do i = ixImin1+1, ixImax1
@@ -378,7 +382,14 @@ module mod_fld
       D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
     enddo
     enddo
-    D(ixImin1,ixImin2,:) = D_center(ixImin1,ixImin2)
+    D(ixImin1,:,1) = D_center(ixImin1,:)
+    D(:,ixImin2,1) = D_center(:,ixImin2)
+    D(ixImin1,:,2) = D_center(ixImin1,:)
+    D(:,ixImin2,2) = D_center(:,ixImin2)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    D(:,:,:) = one  !> TESTCASE
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     !calculate h
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
@@ -402,10 +413,10 @@ module mod_fld
        enddo
 
        !> Boundary conditions on matrix
-       sub1(ixOmin1,j) = zero
-       sup1(ixOmax1,j) = zero
-       diag1(ixOmin1,j) = beta(ixOmin1) - h*D(ixOmin1,j,1)
-       diag1(ixOmax1,j) = beta(ixOmax1) - h*D(ixOmax1+1,j,1)
+       sub1(ixImin1,j) = zero
+       sup1(ixImax1-1,j) = zero
+       diag1(ixImin1,j) = beta(ixImin1) - h*D(ixImin1,j,1)
+       diag1(ixImax1-1,j) = beta(ixImax1-1) - h*D(ixImax1,j,1)
       enddo
 
     elseif ( sweepdir == 2 ) then
@@ -425,16 +436,15 @@ module mod_fld
        enddo
 
        !> Boundary conditions on matrix
-       sub2(ixOmin2,j) = zero
-       sup2(ixOmax2,j) = zero
-       diag2(ixOmin2,j) = beta(ixOmin2) - h*D(j,ixOmin2,2)
-       diag2(ixOmax2,j) = beta(ixOmax2) - h*D(j,ixOmax2+1,2)
+       sub2(ixImin2,j) = zero
+       sup2(ixImax2-1,j) = zero
+       diag2(ixImin2,j) = beta(ixImin2) - h*D(j,ixImin2,2)
+       diag2(ixImax2-1,j) = beta(ixImax2-1) - h*D(j,ixImax2,2)
 
       enddo
     else
       call mpistop("sweepdirection unknown")
     endif
-
   end subroutine make_matrix
 
 
@@ -450,23 +460,22 @@ module mod_fld
     integer :: i
 
     ! initialize c-prime and d-prime
-    cp(ixOmin) = sup(ixOmin)/diag(ixOmin)
-    dp(ixOmin) = bvec(ixOmin)/diag(ixOmin)
+    cp(ixImin) = sup(ixImin)/diag(ixImin)
+    dp(ixImin) = bvec(ixImin)/diag(ixImin)
 
     ! solve for vectors c-prime and d-prime
-    do i = ixOmin ,ixOmax
+    do i = ixImin ,ixImax-1
       cp(i) = sup(i)/( diag(i)-cp(i-1)*sub(i))
       dp(i) = (bvec(i)-dp(i-1)*sub(i))/(diag(i)-cp(i-1)*sub(i))
     enddo
 
     ! initialize x
-    Evec(ixOmax) = dp(ixOmax)
+    Evec(ixImax-1) = dp(ixImax-1)
 
     ! solve for x from the vectors c-prime and d-prime
-    do i = ixOmax-1, ixOmin, -1
+    do i = ixImax-2, ixImin, -1
       Evec(i) = dp(i)-cp(i)*Evec(i+1)
     end do
-
   end subroutine solve_tridiag
 
 
@@ -479,8 +488,8 @@ module mod_fld
     integer g, h
 
     !Edges
-    !do g = 0,nghostcells-1
-    do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+    do g = 0,nghostcells-1
+    !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
       E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
       E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
       E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
@@ -488,17 +497,16 @@ module mod_fld
     end do
 
     !Corners
-    !do g = 0,nghostcells-1
-    do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-      !do h = 0, nghostcells-1
-      do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+    do g = 0,nghostcells-1
+    !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+      do h = 0, nghostcells-1
+      !do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
         E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
         E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
         E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
         E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
       end do
     end do
-
   end subroutine ADI_boundary_conditions
 
 
@@ -572,7 +580,6 @@ module mod_fld
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
 
     print*, e_gas(4,4), E_rad(4,4), dt
-
   end subroutine Energy_interaction
 
 
@@ -630,9 +637,7 @@ module mod_fld
     enddo
 
     e_gas = (bisect_a + bisect_b)/two
-
   end subroutine Bisection_method
-
 
 
   function Polynomial_Bisection(e_gas, c0, c1) result(pol_result)
@@ -643,9 +648,7 @@ module mod_fld
     double precision :: pol_result
 
     pol_result = e_gas**4.d0 + c1*e_gas - c0
-
   end function Polynomial_Bisection
-
 
 
   subroutine fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound2)
@@ -662,8 +665,10 @@ module mod_fld
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
 
     csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
-    csound2(ixO^S) = max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
 
+    print*, prad
+
+    csound2(ixO^S) = max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
   end subroutine fld_get_csound2
 
 
@@ -692,6 +697,6 @@ module mod_fld
     case default
       call mpistop('Unknown geometry')
     end select
-end subroutine grad
+  end subroutine grad
 
 end module mod_fld

@@ -9,7 +9,7 @@
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = F
-  nwauxio = 1
+  nwauxio = 0
 /
 
  &savelist
@@ -22,7 +22,7 @@
  &stoplist
    !time_max = 2.0d-3
    !dtmin = 1.0d-20
-   it_max = 2
+   it_max = 100
 /
 
  &methodlist
@@ -60,7 +60,7 @@
 
  &paramlist
   courantpar       = 0.6d0
-  !dtpar = 1.d-5
+  !dtpar = 1d-6
  /
 
  &hd_list
@@ -73,9 +73,10 @@
  fld_kappa = 0.34d0
  fld_mu = 0.6d0
  fld_split = .false.
- fld_numdt = 500
+ fld_numdt = 200
  fld_bisect_tol = 1.d-15
  fld_Rad_force = .false.
  fld_Diffusion = .true.
+ fld_Energy_advect = .true.
  fld_Energy_interact = .false.
  /

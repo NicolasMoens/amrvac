@@ -40,9 +40,9 @@ contains
     ! Keep the radiative energy constant with internal bound
     usr_internal_bc => constant_var
 
-    ! Output routines
-    usr_aux_output    => specialvar_output
-    usr_add_aux_names => specialvarnames_output
+    ! ! Output routines
+    ! usr_aux_output    => specialvar_output
+    ! usr_add_aux_names => specialvarnames_output
 
     ! Active the physics module
     call hd_activate()
@@ -127,7 +127,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1.d5
+    w(ixI^S,rho_) = 1.d2
     w(ixI^S,mom(:)) = zero
     w(ixI^S,e_) = 1.d0
 

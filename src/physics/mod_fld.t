@@ -163,13 +163,11 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      !> Write energy to file
-      if (it == 0) open(1,file='energy_out0')
-      write(1,222) it,global_time,w(4,4,iw_e)
-      if (it == it_max) close(1)
-      222 format(i8,2e15.5E3)
-
-      print*, dt
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out0')
+      ! write(1,222) it,global_time,w(4,4,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
 
     end if
   end subroutine fld_add_source
@@ -184,15 +182,15 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out) :: fld_R(ixO^S), fld_lambda(ixO^S)
     double precision ::  normgrad2(ixO^S)
-    double precision :: grad_r_e(ixO^S, 1:ndim)
+    double precision :: grad_r_e(ixO^S)
     integer :: idir
 
     !> Calculate R everywhere
     !> |grad E|/(rho kappa E)
     normgrad2(ixO^S) = zero
     do idir = 1,ndir
-      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
-      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**2
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e)
+      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S)**2
     end do
     fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
 
@@ -331,7 +329,6 @@ module mod_fld
     enddo
 
     w(ixO^S,iw_r_e) = E_m(ixO^S)
-    ! print*, "After Evolve ADI: ", w(ixOmax1,ixOmax2,iw_r_e)
   end subroutine Evolve_ADI
 
 
@@ -386,10 +383,6 @@ module mod_fld
     D(:,ixImin2,1) = D_center(:,ixImin2)
     D(ixImin1,:,2) = D_center(ixImin1,:)
     D(:,ixImin2,2) = D_center(:,ixImin2)
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    D(:,:,:) = one  !> TESTCASE
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     !calculate h
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
@@ -578,8 +571,6 @@ module mod_fld
 
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
-
-    print*, e_gas(4,4), E_rad(4,4), dt
   end subroutine Energy_interaction
 
 
@@ -608,30 +599,14 @@ module mod_fld
         Polynomial_Bisection(bisect_c, c0, c1) .le. zero) then
           bisect_a = bisect_c
         else
-          print*, "WHY IS THIS HAPPENING"
-          print*, "f(a)", Polynomial_Bisection(bisect_a, c0, c1)
-          print*, "f(b)", Polynomial_Bisection(bisect_b, c0, c1)
-          print*, "f(c)", Polynomial_Bisection(bisect_c, c0, c1)
-          stop
+          call mpistop("Problem with fld bisection method")
         endif
 
       else
 
-        print*, "c0, c1"
-        print*, c0, c1
-        print*, "c0, abs(c0/c1), abs(c0)**(1.d0/4.d0)"
-        print*, c0, abs(c0/c1), abs(c0)**(1.d0/4.d0)
-        print*, "bisect_a, bisect_b, e_gas"
-        print*, bisect_a, bisect_b, e_gas
-        print*, "f(a), f(b)"
-        print*, Polynomial_Bisection(bisect_a, c0, c1), Polynomial_Bisection(bisect_b, c0, c1)
-
         bisect_a = e_gas
         bisect_b = e_gas
         print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !!!!!!!!!!          IGNORING ENERGY GAS-RAD EXCHANGE          !!!!!!!!!!
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       endif
     enddo
@@ -664,10 +639,7 @@ module mod_fld
     call fld_get_radpress(w,x,ixI^L,ixO^L,prad)
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
 
-    csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
-
-    print*, prad
-
+    csound2(ixO^S) = pth(ixO^S) + prad(ixO^S) 
     csound2(ixO^S) = max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
   end subroutine fld_get_csound2
 

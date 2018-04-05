@@ -196,7 +196,7 @@ module mod_fld
     !> |grad E|/(rho kappa E)
     normgrad2(ixO^S) = zero
     do idir = 1,ndir
-      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
       normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**2
     end do
     fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
@@ -225,7 +225,7 @@ module mod_fld
     !> |grad E|/(rho kappa E)
     normgrad2(ixO^S) = zero
     do idir = 1,ndir
-      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
       normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**2
     end do
     fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa*w(ixO^S,iw_rho)*w(ixO^S,r_e))
@@ -261,7 +261,7 @@ module mod_fld
     normgrad2(ixO^S) = zero
 
     do idir = 1,ndir
-      call grad(w(ixO^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
+      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e(ixO^S,idir))
       normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S,idir)**two
     end do
 
@@ -511,7 +511,7 @@ module mod_fld
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision :: rad_pressure(ixO^S)
-    double precision :: temperature(ixO^S), div_v(ixI^S), vel(ixI^S,1:ndim)
+    double precision :: temperature(ixI^S), div_v(ixI^S), vel(ixI^S,1:ndim)
     double precision :: a1(ixO^S), a2(ixO^S), a3(ixO^S)
     double precision :: c0(ixO^S), c1(ixO^S)
     double precision :: e_gas(ixO^S), E_rad(ixO^S)
@@ -525,7 +525,7 @@ module mod_fld
     call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
 
     !> calc Temperature as p/rho
-    temperature(ixO^S)=(temperature(ixO^S)/w(ixO^S,iw_rho))
+    temperature(ixO^S)=temperature(ixO^S)/w(ixO^S,iw_rho)
 
     !> calc photon tiring term
     do idir=1,ndim
@@ -549,8 +549,6 @@ module mod_fld
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
       print*, i,j,"--------------------"
-      print*, "Temperature"
-      print*, temperature(i,j)
       print*, "Rad_pressure"
       print*, rad_pressure(i,j)
       print*, "a1(i,j), a2(i,j), a3(i,j)"

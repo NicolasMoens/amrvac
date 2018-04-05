@@ -28,7 +28,7 @@ module mod_fld
     integer, public :: fld_numdt = 10
 
     !> Tolerance for bisection method for Energy sourceterms
-    !> This is a percentage of the gas-energy
+    !> This is a percentage of the minimum of gas- and radiation energy
     double precision, public :: fld_bisect_tol = 1.d-3
 
     !> Switch different terms on/off
@@ -40,6 +40,9 @@ module mod_fld
 
     !> Use Heating and Cooling sourceterms in e_
     logical :: fld_Energy_interact = .true.
+
+    !> Let Vac advect radiative energy
+    logical :: fld_Energy_advect = .true.
 
     !> public methods
     !> these are called in mod_hd_phys
@@ -59,7 +62,7 @@ module mod_fld
     integer                      :: n
 
     namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
-    fld_Rad_force, fld_Energy_interact, fld_bisect_tol
+    fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -126,7 +129,6 @@ module mod_fld
     logical, intent(inout) :: active
 
     double precision :: rad_flux(ixO^S,1:ndim)
-
     double precision :: radiation_force(ixO^S,1:ndim)
 
 
@@ -136,13 +138,15 @@ module mod_fld
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
 
+      print*, dt
+
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
       endif
 
+      !> Add momentum sourceterms
       if (fld_Rad_force) then
-
         !> Calculate the radiative flux using the FLD Approximation
         call fld_get_radflux(wCT, x, ixI^L, ixO^L, rad_flux)
 
@@ -156,23 +160,16 @@ module mod_fld
         enddo
       endif
 
+      !> Add energy sourceterms
       if (fld_Energy_interact) then
-        print*, "Before Calling Energy interaction"
-        print*, w(ixI^S,iw_r_e)
-        print*, w(ixI^S,iw_e)
         call Energy_interaction(w, x, ixI^L, ixO^L)
-        print*, "Finished Calling Energy interaction"
-        print*, w(ixI^S,iw_r_e)
-        print*, w(ixI^S,iw_e)
       endif
 
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out5')
-      ! write(1,222) it,global_time,w(5,5,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
-
-      print*, "LAST LINE IN FLD_ADD_SOURCE"
+      !> Write energy to file
+      if (it == 0) open(1,file='energy_out0')
+      write(1,222) it,global_time,w(4,4,iw_e)
+      if (it == it_max) close(1)
+      222 format(i8,2e15.5E3)
 
     end if
 
@@ -288,7 +285,11 @@ module mod_fld
     double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
     double precision, intent(inout) :: f(ixI^S, nwflux)
 
-    f(ixO^S, iw_r_e) = w(ixO^S,iw_mom(idim)) * w(ixO^S, iw_r_e)
+    if (fld_Energy_advect) then
+      f(ixO^S, iw_r_e) = w(ixO^S,iw_mom(idim)) * w(ixO^S, iw_r_e)
+    else
+      f(ixO^S, iw_r_e) = zero
+    endif
 
   end subroutine fld_get_flux
 
@@ -503,7 +504,6 @@ module mod_fld
 
   subroutine Energy_interaction(w, x, ixI^L, ixO^L)
     use mod_global_parameters
-    use mod_variables
     use mod_physics, only: phys_get_pthermal
 
     integer, intent(in)             :: ixI^L, ixO^L
@@ -548,19 +548,9 @@ module mod_fld
     !> Loop over every cell for bisection method
     do i = ixOmin1,ixOmax1
     do j =  ixOmin2,ixOmax2
-      print*, i,j,"--------------------"
-      print*, "Rad_pressure"
-      print*, rad_pressure(i,j)
-      print*, "a1(i,j), a2(i,j), a3(i,j)"
-      print*, a1(i,j), a2(i,j), a3(i,j)
-      print*, "ARGUMENTS:"
-      print*, e_gas(i,j), E_rad(i,j), c0(i,j), c1(i,j)
       call Bisection_method(e_gas(i,j), E_rad(i,j), c0(i,j), c1(i,j))
-      print*,"--------------------",i,j
     enddo
     enddo
-
-    print*, "DONE WITH BISECTING"
 
     !> Update gas-energy in w
     w(ixO^S,iw_e) = e_gas(ixO^S)
@@ -581,13 +571,7 @@ module mod_fld
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)
 
-    print*, "The updated radiation and gas energy arrays are:"
-    print*, E_rad(ixO^S)
-    print*, e_gas(ixO^S)
-
-    print*, "The updated radiation and gas energy terms in the w-array are:"
-    print*, w(ixI^S,iw_r_e)
-    print*, w(ixI^S,iw_e)
+    print*, e_gas(4,4), E_rad(4,4), dt
 
   end subroutine Energy_interaction
 
@@ -604,25 +588,23 @@ module mod_fld
     bisect_a = zero
     bisect_b = min(abs(c0/c1),abs(c0)**(1.d0/4.d0))
 
-    do while (abs(bisect_b-bisect_a) .gt. fld_bisect_tol*e_gas)
+    do while (abs(bisect_b-bisect_a) .ge. fld_bisect_tol*min(e_gas,E_rad))
       bisect_c = (bisect_a + bisect_b)/two
 
       if (Polynomial_Bisection(bisect_a, c0, c1)*&
       Polynomial_Bisection(bisect_b, c0, c1) .le. zero) then
 
-        print*, "Doing something usefull"
-        print*, Polynomial_Bisection(bisect_a, c0, c1), &
-        Polynomial_Bisection(bisect_b, c0, c1), &
-        Polynomial_Bisection(bisect_c, c0, c1)
-
         if (Polynomial_Bisection(bisect_a, c0, c1)*&
         Polynomial_Bisection(bisect_c, c0, c1) .le. zero) then
           bisect_b = bisect_c
         elseif (Polynomial_Bisection(bisect_b, c0, c1)*&
-        Polynomial_Bisection(bisect_c, c0, c1) .lt. zero) then
+        Polynomial_Bisection(bisect_c, c0, c1) .le. zero) then
           bisect_a = bisect_c
         else
           print*, "WHY IS THIS HAPPENING"
+          print*, "f(a)", Polynomial_Bisection(bisect_a, c0, c1)
+          print*, "f(b)", Polynomial_Bisection(bisect_b, c0, c1)
+          print*, "f(c)", Polynomial_Bisection(bisect_c, c0, c1)
           stop
         endif
 
@@ -674,13 +656,13 @@ module mod_fld
     double precision, intent(in)    :: w(ixI^S,nw), hd_gamma
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(out)   :: csound2(ixI^S)
-    double precision :: pth(ixI^S), prad(ixI^S)
+    double precision :: pth(ixI^S), prad(ixO^S)
 
     call fld_get_radpress(w,x,ixI^L,ixO^L,prad)
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
 
     csound2(ixO^S) = prad(ixO^S) + pth(ixO^S)
-    csound2(ixO^S)=max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
+    csound2(ixO^S) = max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
 
   end subroutine fld_get_csound2
 

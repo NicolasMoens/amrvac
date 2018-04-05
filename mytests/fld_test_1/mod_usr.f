@@ -81,7 +81,7 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d0
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-2
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-4
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1.d0
 
   end subroutine initial_conditions

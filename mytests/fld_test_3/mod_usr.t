@@ -49,14 +49,17 @@ contains
     usr_init_one_grid => initial_conditions
 
     ! Special Boundary conditions
-    usr_special_bc => special_bound
+    ! usr_special_bc => special_bound
+
+    ! Keep the internal energy constant with internal bound
+    usr_internal_bc => constant_e
 
     ! Graviatational field
     usr_gravity => set_gravitation_field
 
     ! Output routines
-    ! usr_aux_output    => specialvar_output
-    ! usr_add_aux_names => specialvarnames_output
+    usr_aux_output    => specialvar_output
+    usr_add_aux_names => specialvarnames_output
 
     ! Active the physics module
     call hd_activate()
@@ -164,6 +167,31 @@ end subroutine initglobaldata_usr
   !   end select
   !
   ! end subroutine special_bound
+
+
+  !==========================================================================================
+
+  !> internal boundary, user defined
+    !
+    !> This subroutine can be used to artificially overwrite ALL conservative
+    !> variables in a user-selected region of the mesh, and thereby act as
+    !> an internal boundary region. It is called just before external (ghost cell)
+    !> boundary regions will be set by the BC selection. Here, you could e.g.
+    !> want to introduce an extra variable (nwextra, to be distinguished from nwaux)
+    !> which can be used to identify the internal boundary region location.
+    !> Its effect should always be local as it acts on the mesh.
+
+    subroutine constant_e(level,qt,ixI^L,ixO^L,w,x)
+
+      use mod_global_parameters
+      integer, intent(in)             :: ixI^L,ixO^L,level
+      double precision, intent(in)    :: qt
+      double precision, intent(inout) :: w(ixI^S,1:nw)
+      double precision, intent(in)    :: x(ixI^S,1:ndim)
+
+      w(ixI^S,e_) = 1.d0
+
+    end subroutine constant_e
 
 !==========================================================================================
 

@@ -234,6 +234,12 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    print*, "flux in vertical direction"
+    print*, rad_flux(5,:,2)/(unit_pressure*unit_velocity)
+    print*, "flux in horizontal direction"
+    print*, rad_flux(5,:,1)/(unit_pressure*unit_velocity)
+
   end subroutine fld_get_radflux
 
 
@@ -300,7 +306,7 @@ module mod_fld
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
     double precision :: dw, delta_x
-    integer g, h, m, j
+    integer :: m, j
 
     E_n(ixI^S) = w(ixI^S,iw_r_e)
     E_m(ixI^S) = w(ixI^S,iw_r_e)
@@ -309,29 +315,39 @@ module mod_fld
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
 
     do m = 1,w_max
+
+      print*, "E_m BEFORE", E_m(5:10,5)
+
       !> Set pseudotimestep
       dw = delta_x/4.d0*(max(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin2,ixImax2
-        Evec1 = E_m(:,j)
+        Evec1(ixImin1:ixImax1) = E_m(ixImin1:ixImax1,j)
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
-        E_m(:,j) = Evec1
+        E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
       enddo
       call ADI_boundary_conditions(ixI^L,E_m,w)
+
+      print*, "E_m BETWEEN", E_m(5:10,5)
+
 
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin1,ixImax1
-        Evec2 = E_m(j,:)
+        Evec2(ixImin2:ixImax2) = E_m(j,ixImin2:ixImax2)
         call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
-        E_m(j,:) = Evec2
+        E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
       enddo
       call ADI_boundary_conditions(ixI^L,E_m,w)
+
+      print*, "E_m AFTER", E_m(5:10,5)
+
     enddo
 
     w(ixO^S,iw_r_e) = E_m(ixO^S)
+
   end subroutine Evolve_ADI
 
 
@@ -343,8 +359,10 @@ module mod_fld
     double precision, intent(in) :: w(ixI^S, 1:nw), dw
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(in) :: E_n(ixI^S), E_m(ixI^S)
-    double precision, intent(out):: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
-    double precision, intent(out):: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
+    double precision, intent(out):: diag1(ixImin1:ixImax1,ixImin2:ixImax2),sub1(ixImin1:ixImax1,ixImin2:ixImax2)
+    double precision, intent(out):: sup1(ixImin1:ixImax1,ixImin2:ixImax2),bvec1(ixImin1:ixImax1,ixImin2:ixImax2)
+    double precision, intent(out):: diag2(ixImin2:ixImax2,ixImin1:ixImax1),sub2(ixImin2:ixImax2,ixImin1:ixImax1)
+    double precision, intent(out):: sup2(ixImin2:ixImax2,ixImin1:ixImax1),bvec2(ixImin2:ixImax2,ixImin1:ixImax1)
     double precision :: fld_lambda(ixO^S), fld_R(ixO^S)
     double precision :: D_center(ixI^S), D(ixI^S,1:ndim), h, beta(ixImax), delta_x
     double precision :: grad_r_e(ixI^S, 1:ndim)
@@ -388,8 +406,16 @@ module mod_fld
     D(:,ixImin2,2) = D_center(:,ixImin2)
 
     !calculate h
-    delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
+    if (sweepdir == 1) then
+      delta_x = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)
+      !delta_x = x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)
+    elseif (sweepdir == 2) then
+      !delta_x = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)
+      delta_x = x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)
+    endif
     h = dw/(two*delta_x**two)
+
+    print*, "h", h
 
     !> Matrix depends on sweepingdirection
     if (sweepdir == 1) then
@@ -404,15 +430,18 @@ module mod_fld
          diag1(i,j) = beta(i)
          sub1(i+1,j) = -h*D(i+1,j,1)
          sup1(i,j) = -h*D(i+1,j,1)
-         bvec1(i,j) = (1 - h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
+         bvec1(i,j) = (one - h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
          + h*D(i,j+1,2)*E_m(i,j+1) + h*D(i,j,2)*E_m(i,j-1) + dw/(two*dt)*E_n(i,j)
        enddo
 
        !> Boundary conditions on matrix
        sub1(ixImin1,j) = zero
-       sup1(ixImax1-1,j) = zero
+       sup1(ixImax1,j) = zero
        diag1(ixImin1,j) = beta(ixImin1) - h*D(ixImin1,j,1)
-       diag1(ixImax1-1,j) = beta(ixImax1-1) - h*D(ixImax1,j,1)
+       diag1(ixImax1,j) = beta(ixImax1-1) - h*D(ixImax1,j,1)
+       bvec1(ixImax1,j) = (one - h*(D(ixImax1,j+1,2)+D(ixImax1,j,2)))*E_m(ixImax1,j) &
+       + h*D(ixImax1,j+1,2)*E_m(ixImax1,j+1) + h*D(ixImax1,j,2)*E_m(ixImax1,j-1) + dw/(two*dt)*E_n(ixImax1,j)
+
       enddo
 
     elseif ( sweepdir == 2 ) then
@@ -427,17 +456,19 @@ module mod_fld
          diag2(i,j) = beta(i)
          sub2(i+1,j) = -h*D(j,i+1,2)
          sup2(i,j) = -h*D(j,i+1,2)
-         bvec2(i,j) = (1 - h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
+         bvec2(i,j) = (one - h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
          + h*D(j+1,i,1)*E_m(j+1,i) + h*D(j,i,1)*E_m(j-1,i) + dw/(two*dt)*E_n(j,i)
        enddo
 
        !> Boundary conditions on matrix
        sub2(ixImin2,j) = zero
-       sup2(ixImax2-1,j) = zero
+       sup2(ixImax2,j) = zero
        diag2(ixImin2,j) = beta(ixImin2) - h*D(j,ixImin2,2)
-       diag2(ixImax2-1,j) = beta(ixImax2-1) - h*D(j,ixImax2,2)
-
+       diag2(ixImax2,j) = beta(ixImax2-1) - h*D(j,ixImax2,2)
+       bvec2(ixImax2,j) = (one - h*(D(j+1,ixImax2,1)+D(j,ixImax2,1)))*E_m(j,ixImax2) &
+       + h*D(j+1,ixImax2,1)*E_m(j+1,ixImax2) + h*D(j,ixImax2,1)*E_m(j-1,ixImax2) + dw/(two*dt)*E_n(j,ixImax2)
       enddo
+
     else
       call mpistop("sweepdirection unknown")
     endif
@@ -449,10 +480,10 @@ module mod_fld
     implicit none
 
     integer, intent(in) :: ixOmin,ixOmax,ixImin,ixImax
-    double precision, intent(in) :: diag(ixImax), bvec(ixImax)
-    double precision, intent(in) :: sub(ixImax), sup(ixImax)
-    double precision, intent(out) :: Evec(ixImax)
-    double precision :: cp(ixImax), dp(ixImax)
+    double precision, intent(in) :: diag(ixImin:ixImax), bvec(ixImin:ixImax)
+    double precision, intent(in) :: sub(ixImin:ixImax), sup(ixImin:ixImax)
+    double precision, intent(out) :: Evec(ixImin:ixImax)
+    double precision :: cp(ixImin:ixImax), dp(ixImin:ixImax)
     integer :: i
 
     ! initialize c-prime and d-prime
@@ -460,18 +491,33 @@ module mod_fld
     dp(ixImin) = bvec(ixImin)/diag(ixImin)
 
     ! solve for vectors c-prime and d-prime
-    do i = ixImin ,ixImax-1
-      cp(i) = sup(i)/( diag(i)-cp(i-1)*sub(i))
+    do i = ixImin+1 ,ixImax-1
+      cp(i) = sup(i)/(diag(i)-cp(i-1)*sub(i))
       dp(i) = (bvec(i)-dp(i-1)*sub(i))/(diag(i)-cp(i-1)*sub(i))
     enddo
+    dp(ixImax) = (bvec(ixImax)-dp(ixImax-1)*sub(ixImax))/(diag(ixImax)-cp(ixImax-1)*sub(ixImax))
 
     ! initialize x
-    Evec(ixImax-1) = dp(ixImax-1)
+    Evec(ixImax) = dp(ixImax)
 
     ! solve for x from the vectors c-prime and d-prime
-    do i = ixImax-2, ixImin, -1
+    do i = ixImax-1, ixImin, -1
       Evec(i) = dp(i)-cp(i)*Evec(i+1)
     end do
+
+    print*, "diag", diag
+    print*, "sub", sub
+    print*, "sup", sup
+    print*, "bvec", bvec
+
+    print*, "cp", cp
+    print*, "dp", dp
+
+    print*, "Evec", Evec
+
+    print*, "------------------------------------------------------------------"
+
+
   end subroutine solve_tridiag
 
 

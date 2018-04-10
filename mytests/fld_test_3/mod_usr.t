@@ -51,10 +51,10 @@ contains
     usr_init_one_grid => initial_conditions
 
     ! Special Boundary conditions
-    ! usr_special_bc => special_bound
+    usr_special_bc => special_bound
 
     ! Keep the internal energy constant with internal bound
-    ! usr_internal_bc => constant_e
+    usr_internal_bc => constant_e
 
     ! Graviatational field
     usr_gravity => set_gravitation_field
@@ -119,7 +119,7 @@ end subroutine initglobaldata_usr
     integer :: i
 
 
-    amplitude = 1.d-2
+    amplitude = 5.d-2
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
 
@@ -130,11 +130,11 @@ end subroutine initglobaldata_usr
 
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
-    w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
+    w(ixG^S, rho_) = density(ixG^S)!*(one + amplitude*pert(ixG^S))
     w(ixG^S, mom(:)) = zero
 
     call RANDOM_NUMBER(pert)
-    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)*(one + amplitude*pert(ixG^S))
+    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)!*(one + amplitude*pert(ixG^S))
     w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)
 
     ! print*, "R_star", R_star0, L_star0
@@ -169,30 +169,54 @@ end subroutine initglobaldata_usr
 
 !==========================================================================================
 
-  ! subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
-  !
-  !   use mod_global_parameters
-  !
-  !   integer, intent(in) :: ixG^L, ixB^L, iB
-  !   double precision, intent(in) :: qt, x(ixG^S,1:ndim)
-  !   double precision, intent(inout) :: w(ixG^S,1:nw)
-  !   double precision :: e_inflo
-  !
-  !   select case (iB)
-  !
-  !   case(3)
-  !
-  !     w(:,ixBmax2, rho_) = one
-  !     w(:,ixBmax2, mom(1)) = zero
-  !     w(:,ixBmax2, mom(2)) = w(:,ixBmax2+1, mom(1))
-  !     w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2
-  !     w(:,ixBmax2, r_e) = c_sound0*T_star0**4
-  !
-  !   case default
-  !     call mpistop("BC not specified")
-  !   end select
-  !
-  ! end subroutine special_bound
+  subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
+
+    use mod_global_parameters
+    use mod_variables
+    use mod_physics, only: phys_get_pthermal
+
+    integer, intent(in) :: ixG^L, ixB^L, iB
+    double precision, intent(in) :: qt, x(ixG^S,1:ndim)
+    double precision, intent(inout) :: w(ixG^S,1:nw)
+    double precision :: velocity(ixG^S,1:ndir), pressure(ixG^S)
+
+    select case (iB)
+
+    case(3)
+
+      w(:,ixBmax2, rho_) = rho_bound
+      w(:,ixBmax2, mom(1)) = zero
+
+      print*, "========================================================="
+      print*, w(5,ixBmin2:ixBmax2,:)
+
+
+      ! v(2) = 2*(w(3,mom(1))/w(3,rho_)) - (w(4,mom(1))/w(4,rho_))
+      ! v(1) = 3*(w(3,mom(1))/w(3,rho_)) - 2*(w(4,mom(1))/w(4,rho_))
+
+      ! velocity(:,ixBmax2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
+      ! velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
+      !
+      ! w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
+      ! w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound
+
+      w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
+
+      w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
+      w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound
+
+      w(:,ixBmin2,:) =  w(:,ixBmax2,:)
+
+
+      call phys_get_pthermal(w,x,ixG^L,ixG^L,pressure)
+      print*, pressure(3,4)
+      print*, "^^^^^^^^^^^^^^^^^^^^^^"
+
+    case default
+      call mpistop("BC not specified")
+    end select
+
+  end subroutine special_bound
 
 
   !==========================================================================================
@@ -214,8 +238,14 @@ end subroutine initglobaldata_usr
       double precision, intent(in)    :: qt
       double precision, intent(inout) :: w(ixI^S,1:nw)
       double precision, intent(in)    :: x(ixI^S,1:ndim)
+      double precision :: pressure(ixI^S)
 
-      w(ixI^S,e_) = 1.d0
+      pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
+
+      w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
+
+      print*, "WTF"
+      print*, w(3,3,rho_)*c_sound0**2,w(3,3,rho_),c_sound0**2,w(3,3,e_)
 
     end subroutine constant_e
 
@@ -233,6 +263,8 @@ subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
 
   gravity_field(ixI^S,2) = 6.67e-8*M_star/R_star&
   *unit_density/unit_pressure
+
+  print*, "gravity is used"
 
 end subroutine set_gravitation_field
 
@@ -259,8 +291,8 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
   call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-  w(ixO^S,nw+1)=rad_flux(ixO^S,1)
-  w(ixO^S,nw+2)=rad_flux(ixO^S,2)
+  w(ixO^S,nw+1)=rad_flux(ixO^S,1)/(unit_pressure*unit_velocity)
+  w(ixO^S,nw+2)=rad_flux(ixO^S,2)/(unit_pressure*unit_velocity)
   w(ixO^S,nw+3)=rad_pressure(ixO^S)
   w(ixO^S,nw+4)=fld_lambda(ixO^S)
   w(ixO^S,nw+5)=fld_R(ixO^S)

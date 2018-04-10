@@ -9,26 +9,29 @@
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = F
-  nwauxio = 0
+  nwauxio = 5
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 2
-   ditsave_log     = 2
+   ditsave_dat     = 1
+   ditsave_log     = 1
 /
 
  &stoplist
    !time_max = 2.0d-3
    dtmin = 1.0d-20
-   it_max = 200
+   it_max = 100
 /
 
  &methodlist
    time_integrator = 'onestep'
    flux_scheme     = 20*'hll'
    limiter         = 20*'koren'
+   check_small_values = .true.
+   small_values_method = 'replace'
+   small_pressure = 1.d-5
    !tvdlfeps = 0.d0
    !typesourcesplit = 'sf'
 /
@@ -37,7 +40,7 @@
   nghostcells  =  2
   typeboundary_min1 = 5*'periodic'
   typeboundary_max1 = 5*'periodic'
-  typeboundary_min2 = 5*'symm'
+  typeboundary_min2 = 5*'special'
   typeboundary_max2 = 5*'noinflow'
   typeghostfill= 'copy'
   internalboundary = T
@@ -66,7 +69,7 @@
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 1.01d0
+  hd_gamma = 5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -74,9 +77,10 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 20
+  fld_numdt = 2
   fld_bisect_tol = 1.d-5
   fld_Diffusion = .false.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.
+  fld_Energy_advect = .false.
  /

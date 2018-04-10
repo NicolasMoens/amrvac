@@ -7,17 +7,19 @@ module mod_usr
 
   implicit none
 
-  double precision :: M_sun = 1.99d33
-  double precision :: L_sun = 3.99d33
+  double precision :: M_sun = 1.989d33
+  double precision :: L_sun = 3.827d33
   double precision :: R_sun = 6.96d10
 
   double precision :: M_star
   double precision :: L_star
   double precision :: T_star
   double precision :: R_star
-  double precision :: rho_star
 
-  double precision :: Flux0, c_sound0, T_star0, kappa0, c_light0, g0
+  double precision :: Flux0, c_sound0, T_star0, kappa0
+  double precision :: c_light0, g0, geff0, heff0, Gamma
+  double precision :: L_star0, R_star0, M_star0
+  double precision :: tau_bound,  P_bound, rho_bound
 
 contains
 
@@ -29,15 +31,17 @@ contains
 
     call set_coordinate_system("Cartesian_2D")
 
-    M_star = 1*M_sun
-    L_star = 1*L_sun
-    T_star = 6000
-    R_star = 1*R_sun
-    rho_star = 5.d2
+    M_star = 150*M_sun
+    L_star = (M_star/M_sun)**3.d0*L_sun !*unit_time/unit_pressure*unit_length**3.d0
+    R_star = 30*R_sun
+    T_star = (L_star/(4d0*dpi*R_star**2*5.67051d-5))**0.25d0
+    tau_bound = 50.d0
+
+    call initglobaldata_usr()
 
     !Fix dimensionless stuff here
-    unit_length        = R_sun
-    unit_numberdensity = rho_star/((1.d0+4.d0*He_abundance)*mp_cgs)
+    unit_length        = R_star
+    unit_numberdensity = 4.6d-8/((1.d0+4.d0*He_abundance)*mp_cgs)
     unit_temperature   = T_star
 
     ! Initialize units
@@ -47,19 +51,20 @@ contains
     usr_init_one_grid => initial_conditions
 
     ! Special Boundary conditions
-    usr_special_bc => special_bound
+    ! usr_special_bc => special_bound
+
+    ! Keep the internal energy constant with internal bound
+    ! usr_internal_bc => constant_e
 
     ! Graviatational field
     usr_gravity => set_gravitation_field
 
     ! Output routines
-    ! usr_aux_output    => specialvar_output
-    ! usr_add_aux_names => specialvarnames_output
+    usr_aux_output    => specialvar_output
+    usr_add_aux_names => specialvarnames_output
 
     ! Active the physics module
     call hd_activate()
-
-    call initglobaldata_usr()
 
     print*, 'unit_time', unit_time
     print*, 'unit_temperature', unit_temperature
@@ -72,19 +77,34 @@ contains
 
   end subroutine usr_init
 
-!==========================================================================================
+!========================== ================================================================
 
 subroutine initglobaldata_usr
   use mod_global_parameters
 
-  Flux0 = L_star/(4*dpi*R_star**2)*(unit_density*unit_length**&
-     3/(unit_velocity*unit_pressure))
+  L_star0 = L_star*unit_time/(unit_pressure*unit_length**3.d0)
+  R_star0 = R_star/unit_length
+  M_star0 = M_star/(unit_density*unit_length**3.d0)
+
+  Flux0 = L_star0/(4*dpi*R_star0**2)
+
   T_star0 = T_star/unit_temperature
-  c_sound0 = dsqrt((1.38d-16*T_star0/(0.6*mp_cgs))/unit_velocity)
-  kappa0 = 0.34/unit_length**2
+
+  c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
+
+  print*, c_sound0/1.d5, dsqrt((1.38d-16*T_star/(0.6*mp_cgs))), unit_velocity, "#############"
+
+  kappa0 = 0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0 !> DOuBLE CHECK
   c_light0 = const_c/unit_velocity
   g0 = 6.67e-8*M_star/R_star**2*(unit_density*unit_length/unit_pressure)
+  geff0 = g0*(one - (kappa0*Flux0)/(c_light0*g0))
+  heff0 = c_sound0**2/geff0
+  Gamma = (kappa0*Flux0)/(c_light0*g0)
 
+  !T_star =
+
+  P_bound = geff0*tau_bound/kappa0
+  rho_bound = P_bound/c_sound0**two
 
 end subroutine initglobaldata_usr
 
@@ -95,6 +115,7 @@ end subroutine initglobaldata_usr
      ixmax1,ixmax2, w, x)
     use mod_global_parameters
     use mod_constants
+    use mod_variables
     use mod_hd_phys, only: hd_get_pthermal
 
     integer, intent(in)             :: ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,&
@@ -102,16 +123,55 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,&
         ndim)
     double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, nw)
+    double precision :: density(ixGmin1:ixGmax1,ixGmin2:ixGmax2),&
+        pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2), pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2), amplitude
+    integer :: i
+
+
+    amplitude = 1.d-2
+    pressure(:,ixGmin2) = p_bound
+    density(:,ixGmin2) = rho_bound
+
+    do i=ixGmin2,ixGmax2
+      pressure(:,i) = p_bound*exp(-x(:,i,2)/heff0)
+      density(:,i) = rho_bound*exp(-x(:,i,2)/heff0)
+    enddo
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = one
+    call RANDOM_NUMBER(pert)
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = density(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = &
-       one/(one-3.d0/5.d0)*(c_sound0**2+(kappa0*Flux0/c_light0-&
-       g0)*(x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,2)-x(1,1,2)))
+
+    call RANDOM_NUMBER(pert)
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
-       c_sound0*T_star0**4-3*kappa0*Flux0/c_light0*(x(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2,2)-x(1,1,2))
+       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
+
+    print*, "R_star", R_star0, L_star0
+    print*, "R_star", R_star, L_star
+    print*, "Flux", Flux0
+
+    print*, "g0", g0 *unit_length/unit_time**2
+    print*, "geff0", geff0 *unit_length/unit_time**2
+    print*, "c_sound0", c_sound0 *unit_length/unit_time
+    print*, "Gamma", Gamma
+    print*, "heff0", heff0 *unit_length/ R_star
+    print*, "Tstar0", T_star0
+    print*, "Tstar", T_star
+
+    ! print*, "density", w(5,3:10,rho_) *unit_density
+    ! print*, "energy", w(5,3:10,e_) *unit_pressure
+    ! print*, "rad_energy", w(5,3:10,r_e) *unit_pressure
+
+    print*, rho_bound*unit_density, p_bound*unit_pressure
+    print*, "factor", 3.d0*Gamma/(one-Gamma)
+
+    do i=ixGmin2,ixGmax2
+      print*, x(5,i,2),w(5,i,rho_)*unit_density
+    enddo
 
   end subroutine initial_conditions
 
@@ -122,51 +182,59 @@ end subroutine initglobaldata_usr
 
 !==========================================================================================
 
-  subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
-     ixBmax1,ixBmax2,iB,w,x)
+  ! subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
+  !
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in) :: ixG^L, ixB^L, iB
+  !   double precision, intent(in) :: qt, x(ixG^S,1:ndim)
+  !   double precision, intent(inout) :: w(ixG^S,1:nw)
+  !   double precision :: e_inflo
+  !
+  !   select case (iB)
+  !
+  !   case(3)
+  !
+  !     w(:,ixBmax2, rho_) = one
+  !     w(:,ixBmax2, mom(1)) = zero
+  !     w(:,ixBmax2, mom(2)) = w(:,ixBmax2+1, mom(1))
+  !     w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2
+  !     w(:,ixBmax2, r_e) = c_sound0*T_star0**4
+  !
+  !   case default
+  !     call mpistop("BC not specified")
+  !   end select
+  !
+  ! end subroutine special_bound
 
-    use mod_global_parameters
 
-    integer, intent(in) :: ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixBmin1,ixBmin2,&
-       ixBmax1,ixBmax2, iB
-    double precision, intent(in) :: qt, x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,&
-       1:ndim)
-    double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,1:nw)
-    double precision :: e_inflo
+  !==========================================================================================
 
-    select case (iB)
+    !> internal boundary, user defined
+    !
+    !> This subroutine can be used to artificially overwrite ALL conservative
+    !> variables in a user-selected region of the mesh, and thereby act as
+    !> an internal boundary region. It is called just before external (ghost cell)
+    !> boundary regions will be set by the BC selection. Here, you could e.g.
+    !> want to introduce an extra variable (nwextra, to be distinguished from nwaux)
+    !> which can be used to identify the internal boundary region location.
+    !> Its effect should always be local as it acts on the mesh.
 
-    case(3)
-      w(:,ixBmax2, rho_) = one*perturbation(ixGmin2,ixGmax2,2)
-      w(:,ixBmax2, mom(1)) = zero
-      w(:,ixBmax2, mom(1)) = w(:,ixBmax2+1, mom(1))*perturbation(ixGmin2,&
-         ixGmax2,6)
-      w(:,ixBmax2, e_) = one/(one-3.d0/5.d0)*c_sound0**2*perturbation(ixGmin2,&
-         ixGmax2,4)
-      w(:,ixBmax2, r_e) = c_sound0*T_star0**4*perturbation(ixGmin2,ixGmax2,3)
+    subroutine constant_e(level,qt,ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
+       ixOmin2,ixOmax1,ixOmax2,w,x)
 
-    case default
-      call mpistop("BC not specified")
-    end select
+      use mod_global_parameters
+      integer, intent(in)             :: ixImin1,ixImin2,ixImax1,ixImax2,&
+         ixOmin1,ixOmin2,ixOmax1,ixOmax2,level
+      double precision, intent(in)    :: qt
+      double precision, intent(inout) :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
+         1:nw)
+      double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
+         1:ndim)
 
-  end subroutine special_bound
+      w(ixImin1:ixImax1,ixImin2:ixImax2,e_) = 1.d0
 
-  function perturbation(ixOmin,ixOmax,n) result(pert_ampl)
-    use mod_global_parameters
-
-    integer, intent(in) :: ixOmin,ixOmax, n
-    double precision :: pert_ampl(ixOmin:ixOmax)
-
-    integer :: i
-
-    do i =  ixOmin,ixOmax
-      pert_ampl(i) = sin(two*dpi*n*(i-ixOmin)/ixOmax)
-      pert_ampl(i) = pert_ampl(i)*sin((global_time/dt)*1.d-1)
-    enddo
-
-    pert_ampl = one + 1.d-2*pert_ampl
-
-  end function perturbation
+    end subroutine constant_e
 
 !==========================================================================================
 
@@ -181,12 +249,10 @@ subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
   double precision, intent(out)   :: gravity_field(ixImin1:ixImax1,&
      ixImin2:ixImax2,ndim)
 
-  ! phi = -GM/R
-
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
+
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
-     2) = 6.67e-8*M_star/(R_star+x(ixImin1:ixImax1,ixImin2:ixImax2,&
-     2))*(unit_density/unit_pressure)
+     2) = 6.67e-8*M_star/R_star*unit_density/unit_pressure
 
 end subroutine set_gravitation_field
 
@@ -217,7 +283,9 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
      ixImin2:ixImax2)
 
   call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_flux, rad_pressure)
+     ixOmax1,ixOmax2, rad_flux)
+  call fld_get_radpress(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
+     ixOmax1,ixOmax2, rad_pressure)
   call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
      ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
 

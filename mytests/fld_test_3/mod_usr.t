@@ -87,22 +87,16 @@ subroutine initglobaldata_usr
   M_star0 = M_star/(unit_density*unit_length**3.d0)
 
   Flux0 = L_star0/(4*dpi*R_star0**2)
-
   T_star0 = T_star/unit_temperature
-
   c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
 
-  print*, c_sound0/1.d5, dsqrt((1.38d-16*T_star/(0.6*mp_cgs))), unit_velocity, "#############"
-
-  kappa0 = 0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0 !> DOuBLE CHECK
+  kappa0 = 0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
   c_light0 = const_c/unit_velocity
   g0 = 6.67e-8*M_star/R_star**2&
   *(unit_density*unit_length/unit_pressure)
   geff0 = g0*(one - (kappa0*Flux0)/(c_light0*g0))
   heff0 = c_sound0**2/geff0
   Gamma = (kappa0*Flux0)/(c_light0*g0)
-
-  !T_star =
 
   P_bound = geff0*tau_bound/kappa0
   rho_bound = P_bound/c_sound0**two
@@ -136,35 +130,35 @@ end subroutine initglobaldata_usr
 
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
-    w(ixG^S, rho_) = density(ixG^S)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
     w(ixG^S, mom(:)) = zero
 
     call RANDOM_NUMBER(pert)
-    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)*(one + amplitude*pert(ixG^S))
     w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)
 
-    print*, "R_star", R_star0, L_star0
-    print*, "R_star", R_star, L_star
-    print*, "Flux", Flux0
-
-    print*, "g0", g0 *unit_length/unit_time**2
-    print*, "geff0", geff0 *unit_length/unit_time**2
-    print*, "c_sound0", c_sound0 *unit_length/unit_time
-    print*, "Gamma", Gamma
-    print*, "heff0", heff0 *unit_length/ R_star
-    print*, "Tstar0", T_star0
-    print*, "Tstar", T_star
-
-    ! print*, "density", w(5,3:10,rho_) *unit_density
-    ! print*, "energy", w(5,3:10,e_) *unit_pressure
-    ! print*, "rad_energy", w(5,3:10,r_e) *unit_pressure
-
-    print*, rho_bound*unit_density, p_bound*unit_pressure
-    print*, "factor", 3.d0*Gamma/(one-Gamma)
-
-    do i=ixGmin2,ixGmax2
-      print*, x(5,i,2),w(5,i,rho_)*unit_density
-    enddo
+    ! print*, "R_star", R_star0, L_star0
+    ! print*, "R_star", R_star, L_star
+    ! print*, "Flux", Flux0
+    !
+    ! print*, "g0", g0 *unit_length/unit_time**2
+    ! print*, "geff0", geff0 *unit_length/unit_time**2
+    ! print*, "c_sound0", c_sound0 *unit_length/unit_time
+    ! print*, "Gamma", Gamma
+    ! print*, "heff0", heff0 *unit_length/ R_star
+    ! print*, "Tstar0", T_star0
+    ! print*, "Tstar", T_star
+    !
+    ! ! print*, "density", w(5,3:10,rho_) *unit_density
+    ! ! print*, "energy", w(5,3:10,e_) *unit_pressure
+    ! ! print*, "rad_energy", w(5,3:10,r_e) *unit_pressure
+    !
+    ! print*, rho_bound*unit_density, p_bound*unit_pressure
+    ! print*, "factor", 3.d0*Gamma/(one-Gamma)
+    !
+    ! do i=ixGmin2,ixGmax2
+    !   print*, x(5,i,2),w(5,i,rho_)*unit_density
+    ! enddo
 
   end subroutine initial_conditions
 

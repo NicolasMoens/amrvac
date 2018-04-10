@@ -134,6 +134,9 @@ module mod_fld
 
     integer :: idir, i
 
+    print*, it, dt, global_time
+    print*, w(5,5,:)
+
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
@@ -639,7 +642,7 @@ module mod_fld
     call fld_get_radpress(w,x,ixI^L,ixO^L,prad)
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
 
-    csound2(ixO^S) = pth(ixO^S) + prad(ixO^S) 
+    csound2(ixO^S) = pth(ixO^S) + prad(ixO^S)
     csound2(ixO^S) = max(hd_gamma,4.d0/3.d0)*csound2(ixO^S)/w(ixO^S,iw_rho)
   end subroutine fld_get_csound2
 

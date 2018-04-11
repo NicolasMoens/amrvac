@@ -130,11 +130,11 @@ end subroutine initglobaldata_usr
 
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
-    w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
+    w(ixG^S, rho_) = density(ixG^S)!*(one + amplitude*pert(ixG^S))
     w(ixG^S, mom(:)) = zero
 
     call RANDOM_NUMBER(pert)
-    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)*(one + amplitude*pert(ixG^S))
+    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)!*(one + amplitude*pert(ixG^S))
     w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)
 
     ! print*, "R_star", R_star0, L_star0
@@ -233,64 +233,64 @@ end subroutine initglobaldata_usr
 
     end subroutine constant_e
 
-!==========================================================================================
+  !==========================================================================================
 
-!> Calculate gravitational acceleration in each dimension
-subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
-  use mod_global_parameters
-  integer, intent(in)             :: ixI^L, ixO^L
-  double precision, intent(in)    :: x(ixI^S,1:ndim)
-  double precision, intent(in)    :: wCT(ixI^S,1:nw)
-  double precision, intent(out)   :: gravity_field(ixI^S,ndim)
+  !> Calculate gravitational acceleration in each dimension
+  subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    double precision, intent(in)    :: x(ixI^S,1:ndim)
+    double precision, intent(in)    :: wCT(ixI^S,1:nw)
+    double precision, intent(out)   :: gravity_field(ixI^S,ndim)
 
-  gravity_field(ixI^S,1) = zero
+    gravity_field(ixI^S,1) = zero
 
-  gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
+    gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
 
-end subroutine set_gravitation_field
+  end subroutine set_gravitation_field
 
 
-!==========================================================================================
+  !==========================================================================================
 
-subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
-  use mod_global_parameters
-  use mod_physics
+  subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
+    use mod_global_parameters
+    use mod_physics
 
-  integer, intent(in)                :: ixI^L,ixO^L
-  double precision, intent(in)       :: x(ixI^S,1:ndim)
-  double precision                   :: w(ixI^S,nw+nwauxio)
-  double precision                   :: normconv(0:nw+nwauxio)
-  double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
+    integer, intent(in)                :: ixI^L,ixO^L
+    double precision, intent(in)       :: x(ixI^S,1:ndim)
+    double precision                   :: w(ixI^S,nw+nwauxio)
+    double precision                   :: normconv(0:nw+nwauxio)
+    double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
 
-  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
-  call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
-  call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+    call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
+    call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
+    call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-  w(ixO^S,nw+1)=rad_flux(ixO^S,1)/(unit_pressure*unit_velocity)
-  w(ixO^S,nw+2)=rad_flux(ixO^S,2)/(unit_pressure*unit_velocity)
-  w(ixO^S,nw+3)=rad_pressure(ixO^S)
-  w(ixO^S,nw+4)=fld_lambda(ixO^S)
-  w(ixO^S,nw+5)=fld_R(ixO^S)
+    w(ixO^S,nw+1)=rad_flux(ixO^S,1)/(unit_pressure*unit_velocity)
+    w(ixO^S,nw+2)=rad_flux(ixO^S,2)/(unit_pressure*unit_velocity)
+    w(ixO^S,nw+3)=rad_pressure(ixO^S)
+    w(ixO^S,nw+4)=fld_lambda(ixO^S)
+    w(ixO^S,nw+5)=fld_R(ixO^S)
 
-end subroutine specialvar_output
+  end subroutine specialvar_output
 
-subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
-  use mod_global_parameters
-  character(len=*) :: varnames
+  subroutine specialvarnames_output(varnames)
+  ! newly added variables need to be concatenated with the w_names/primnames string
+    use mod_global_parameters
+    character(len=*) :: varnames
 
-  varnames = 'F1 F2 RP lam fld_R'
+    varnames = 'F1 F2 RP lam fld_R'
 
-end subroutine specialvarnames_output
+  end subroutine specialvarnames_output
 
-!==========================================================================================
+  !==========================================================================================
 
-end module mod_usr
+  end module mod_usr
 
-!==========================================================================================
+  !==========================================================================================

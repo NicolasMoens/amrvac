@@ -156,7 +156,7 @@ module mod_fld
               + qdt * radiation_force(ixO^S,idir)
         enddo
       endif
-      
+
       !> Add energy sourceterms
       if (fld_Energy_interact) then
         call Energy_interaction(w, x, ixI^L, ixO^L)
@@ -308,7 +308,7 @@ module mod_fld
     do m = 1,w_max
 
       !> Set pseudotimestep
-      dw = delta_x/4.d0*(max(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
+      dw = delta_x/4.d0*(min(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)

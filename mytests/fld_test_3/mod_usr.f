@@ -135,14 +135,12 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = density(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
 
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)/(hd_gamma - one)*(one + amplitude*pert(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
        3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
 
@@ -254,83 +252,85 @@ end subroutine initglobaldata_usr
 
     end subroutine constant_e
 
-!==========================================================================================
+  !==========================================================================================
 
-!> Calculate gravitational acceleration in each dimension
-subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
-   ixOmin2,ixOmax1,ixOmax2,wCT,x,gravity_field)
-  use mod_global_parameters
-  integer, intent(in)             :: ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
-     ixOmin2,ixOmax1,ixOmax2
-  double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,1:ndim)
-  double precision, intent(in)    :: wCT(ixImin1:ixImax1,ixImin2:ixImax2,1:nw)
-  double precision, intent(out)   :: gravity_field(ixImin1:ixImax1,&
-     ixImin2:ixImax2,ndim)
+  !> Calculate gravitational acceleration in each dimension
+  subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
+     ixOmin2,ixOmax1,ixOmax2,wCT,x,gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixImin1,ixImin2,ixImax1,ixImax2,&
+        ixOmin1,ixOmin2,ixOmax1,ixOmax2
+    double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
+       1:ndim)
+    double precision, intent(in)    :: wCT(ixImin1:ixImax1,ixImin2:ixImax2,&
+       1:nw)
+    double precision, intent(out)   :: gravity_field(ixImin1:ixImax1,&
+       ixImin2:ixImax2,ndim)
 
-  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
+    gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
 
-  gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
-     2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
+    gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
+       2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
 
-end subroutine set_gravitation_field
+  end subroutine set_gravitation_field
 
 
-!==========================================================================================
+  !==========================================================================================
 
-subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
-   ixOmax1,ixOmax2,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
-  use mod_global_parameters
-  use mod_physics
+  subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
+     ixOmax1,ixOmax2,w,x,normconv)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
+    use mod_global_parameters
+    use mod_physics
 
-  integer, intent(in)                :: ixImin1,ixImin2,ixImax1,ixImax2,&
-     ixOmin1,ixOmin2,ixOmax1,ixOmax2
-  double precision, intent(in)       :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
-     1:ndim)
-  double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
-     nw+nwauxio)
-  double precision                   :: normconv(0:nw+nwauxio)
-  double precision                   :: rad_flux(ixImin1:ixImax1,&
-     ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
-      fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
-     ixImin2:ixImax2)
+    integer, intent(in)                :: ixImin1,ixImin2,ixImax1,ixImax2,&
+       ixOmin1,ixOmin2,ixOmax1,ixOmax2
+    double precision, intent(in)       :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
+       1:ndim)
+    double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
+       nw+nwauxio)
+    double precision                   :: normconv(0:nw+nwauxio)
+    double precision                   :: rad_flux(ixImin1:ixImax1,&
+       ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
+        fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
+       ixImin2:ixImax2)
 
-  call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_flux)
-  call fld_get_radpress(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
-     ixOmax1,ixOmax2, rad_pressure)
-  call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
-     ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
+    call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
+       ixOmin2,ixOmax1,ixOmax2, rad_flux)
+    call fld_get_radpress(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
+       ixOmin2,ixOmax1,ixOmax2, rad_pressure)
+    call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
+       ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
 
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,1)/(unit_pressure*unit_velocity)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2,2)/(unit_pressure*unit_velocity)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
-  w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
-     ixOmin2:ixOmax2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,1)/(unit_pressure*unit_velocity)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,2)/(unit_pressure*unit_velocity)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2)
 
-end subroutine specialvar_output
+  end subroutine specialvar_output
 
-subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
-  use mod_global_parameters
-  character(len=*) :: varnames
+  subroutine specialvarnames_output(varnames)
+  ! newly added variables need to be concatenated with the w_names/primnames string
+    use mod_global_parameters
+    character(len=*) :: varnames
 
-  varnames = 'F1 F2 RP lam fld_R'
+    varnames = 'F1 F2 RP lam fld_R'
 
-end subroutine specialvarnames_output
+  end subroutine specialvarnames_output
 
-!==========================================================================================
+  !==========================================================================================
 
-end module mod_usr
+  end module mod_usr
 
-!==========================================================================================
+  !==========================================================================================

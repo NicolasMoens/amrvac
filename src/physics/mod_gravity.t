@@ -57,7 +57,7 @@ contains
       else
         call usr_gravity(ixI^L,ixO^L,wCT,x,gravity_field)
       end if
-  
+
       do idim = 1, ndim
         w(ixO^S,iw_mom(idim)) = w(ixO^S,iw_mom(idim)) &
               + qdt * gravity_field(ixO^S,idim) * wCT(ixO^S,iw_rho)

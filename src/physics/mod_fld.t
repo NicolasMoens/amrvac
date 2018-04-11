@@ -131,11 +131,7 @@ module mod_fld
     double precision :: rad_flux(ixO^S,1:ndim)
     double precision :: radiation_force(ixO^S,1:ndim)
 
-
     integer :: idir, i
-
-    print*, it, dt, global_time
-    print*, w(5,5,:)
 
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
@@ -160,7 +156,7 @@ module mod_fld
               + qdt * radiation_force(ixO^S,idir)
         enddo
       endif
-
+      
       !> Add energy sourceterms
       if (fld_Energy_interact) then
         call Energy_interaction(w, x, ixI^L, ixO^L)
@@ -234,11 +230,6 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
-
-    print*, "flux in vertical direction"
-    print*, rad_flux(5,:,2)/(unit_pressure*unit_velocity)
-    print*, "flux in horizontal direction"
-    print*, rad_flux(5,:,1)/(unit_pressure*unit_velocity)
 
   end subroutine fld_get_radflux
 
@@ -316,8 +307,6 @@ module mod_fld
 
     do m = 1,w_max
 
-      print*, "E_m BEFORE", E_m(5:10,5)
-
       !> Set pseudotimestep
       dw = delta_x/4.d0*(max(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
 
@@ -330,9 +319,6 @@ module mod_fld
       enddo
       call ADI_boundary_conditions(ixI^L,E_m,w)
 
-      print*, "E_m BETWEEN", E_m(5:10,5)
-
-
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin1,ixImax1
@@ -341,8 +327,6 @@ module mod_fld
         E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
       enddo
       call ADI_boundary_conditions(ixI^L,E_m,w)
-
-      print*, "E_m AFTER", E_m(5:10,5)
 
     enddo
 
@@ -414,8 +398,6 @@ module mod_fld
       delta_x = x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)
     endif
     h = dw/(two*delta_x**two)
-
-    print*, "h", h
 
     !> Matrix depends on sweepingdirection
     if (sweepdir == 1) then
@@ -504,19 +486,6 @@ module mod_fld
     do i = ixImax-1, ixImin, -1
       Evec(i) = dp(i)-cp(i)*Evec(i+1)
     end do
-
-    print*, "diag", diag
-    print*, "sub", sub
-    print*, "sup", sup
-    print*, "bvec", bvec
-
-    print*, "cp", cp
-    print*, "dp", dp
-
-    print*, "Evec", Evec
-
-    print*, "------------------------------------------------------------------"
-
 
   end subroutine solve_tridiag
 

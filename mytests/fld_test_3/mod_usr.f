@@ -135,12 +135,14 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = density(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
 
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)/(hd_gamma - one)*(one + amplitude*pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
        3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
 
@@ -198,31 +200,20 @@ end subroutine initglobaldata_usr
       w(:,ixBmax2, rho_) = rho_bound
       w(:,ixBmax2, mom(1)) = zero
 
-      print*, "========================================================="
-      print*, w(5,ixBmin2:ixBmax2,:)
+      velocity(:,ixBmax2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
+         rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
+      velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
+         rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
 
-
-      ! v(2) = 2*(w(3,mom(1))/w(3,rho_)) - (w(4,mom(1))/w(4,rho_))
-      ! v(1) = 3*(w(3,mom(1))/w(3,rho_)) - 2*(w(4,mom(1))/w(4,rho_))
-
-      ! velocity(:,ixBmax2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
-      ! velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
-      !
-      ! w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
-      ! w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound
-
-      w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
+      ! w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
 
       w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
       w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound
 
       w(:,ixBmin2,:) =  w(:,ixBmax2,:)
 
-
-      call phys_get_pthermal(w,x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixGmin1,&
-         ixGmin2,ixGmax1,ixGmax2,pressure)
-      print*, pressure(3,4)
-      print*, "^^^^^^^^^^^^^^^^^^^^^^"
+      w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
+      w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound
 
     case default
       call mpistop("BC not specified")
@@ -258,12 +249,8 @@ end subroutine initglobaldata_usr
 
       pressure(ixImin1:ixImax1,ixImin2:ixImax2) = w(ixImin1:ixImax1,&
          ixImin2:ixImax2,rho_)*c_sound0**2
-
       w(ixImin1:ixImax1,ixImin2:ixImax2, e_) = pressure(ixImin1:ixImax1,&
          ixImin2:ixImax2)/(hd_gamma - one)
-
-      print*, "WTF"
-      print*, w(3,3,rho_)*c_sound0**2,w(3,3,rho_),c_sound0**2,w(3,3,e_)
 
     end subroutine constant_e
 
@@ -283,9 +270,7 @@ subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
 
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
-     2) = 6.67e-8*M_star/R_star*unit_density/unit_pressure
-
-  print*, "gravity is used"
+     2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
 
 end subroutine set_gravitation_field
 

@@ -44,6 +44,11 @@ module mod_fld
     !> Let Vac advect radiative energy
     logical :: fld_Energy_advect = .true.
 
+    !> Boundary conditions for radiative Energy in ADI.
+    character(len=8) :: fld_bound_min1 = 'periodic'
+    character(len=8) :: fld_bound_max1 = 'periodic'
+    character(len=8) :: fld_bound_min2 = 'periodic'
+    character(len=8) :: fld_bound_max2 = 'periodic'
 
     !> Set Diffusion coefficient to unity
     logical :: fld_diff_testcase = .false.
@@ -66,7 +71,8 @@ module mod_fld
     integer                      :: n
 
     namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
-    fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase
+    fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase,&
+    fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -234,7 +240,6 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
-
   end subroutine fld_get_radflux
 
 
@@ -335,7 +340,6 @@ module mod_fld
     enddo
 
     w(ixO^S,iw_r_e) = E_m(ixO^S)
-
   end subroutine Evolve_ADI
 
 
@@ -494,7 +498,6 @@ module mod_fld
     do i = ixImax-1, ixImin, -1
       Evec(i) = dp(i)-cp(i)*Evec(i+1)
     end do
-
   end subroutine solve_tridiag
 
 
@@ -506,36 +509,67 @@ module mod_fld
     double precision, intent(inout) :: E_m(ixI^S)
     integer g, h
 
-    ! !Edges
-    ! do g = 0,nghostcells-1
-    ! !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-    !   E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
-    !   E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
-    !   E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
-    !   E_m(:,ixImax2-g) = w(:,ixImax2-nghostcells,iw_r_e)
-    ! end do
-    !
-    ! !Corners
-    ! do g = 0,nghostcells-1
-    ! !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-    !   do h = 0, nghostcells-1
-    !   !do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-    !     E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
-    !     E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
-    !     E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
-    !     E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
-    !   end do
-    ! end do
+    select case (fld_bound_min1)
+    case('periodic')
+      E_m(ixImin1:ixOmin1-1,:) = E_m(ixOmax1-1:ixOmax1,:)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      E_m(ixOmin1-1,:) = 2.d0*E_m(ixOmin1,:) - E_m(ixOmin1+1,:)
+      E_m(ixImin1,:) = 2.d0*E_m(ixOmin1-1,:) - E_m(ixOmin1,:)
+    case('fixed')
+      E_m(ixImin1:ixOmin1-1,:) = w(ixImin1:ixOmin1-1,:,iw_r_e)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
 
-    !Edges
+    select case (fld_bound_max1)
+    case('periodic')
+      E_m(ixImax1:ixOmax1+1,:) = E_m(ixOmin1+1:ixOmin1,:)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      E_m(ixOmax1+1,:) = 2.d0*E_m(ixOmax1,:) - E_m(ixOmax1-1,:)
+      E_m(ixImax1,:) = 2.d0*E_m(ixOmax1+1,:) - E_m(ixOmax1,:)
+    case('fixed')
+      E_m(ixImax1:ixOmax1+1,:) = w(ixImax1:ixOmax1+1,:,iw_r_e)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    select case (fld_bound_min2)
+    case('periodic')
+      E_m(:,ixImin2:ixOmin2-1) = E_m(:,ixOmax2-1:ixOmax2)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      E_m(:,ixOmin2-1) = 2.d0*E_m(:,ixOmin2) - E_m(:,ixOmin2+1)
+      E_m(:,ixImin2) = 2.d0*E_m(:,ixOmin2-1) - E_m(:,ixOmin2)
+    case('fixed')
+      E_m(:,ixImin2:ixOmin2-1) = w(:,ixImin2:ixOmin2-1,iw_r_e)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    select case (fld_bound_max2)
+    case('periodic')
+      E_m(:,ixImax2:ixOmax2+1) = E_m(:,ixOmin2+1:ixOmin2)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      E_m(:,ixOmax2+1) = 2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
+      E_m(:,ixImax2) = 2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
+    case('fixed')
+      E_m(:,ixImax2:ixOmax2+1) = w(:,ixImax2:ixOmax2+1,iw_r_e)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    !Corners
     do g = 0,nghostcells-1
-    !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-      E_m(ixImin1+g,:) = w(ixOmax1,:,iw_r_e)
-      E_m(ixImax1-g,:) = w(ixOmin1,:,iw_r_e)
-      E_m(:,ixImin2+g) = w(:,ixOmax2,iw_r_e)
-      E_m(:,ixImax2-g) = w(:,ixOmin2,iw_r_e)
+      do h = 0, nghostcells-1
+        E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
+        E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
+        E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
+        E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
+      end do
     end do
-
   end subroutine ADI_boundary_conditions
 
 

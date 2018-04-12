@@ -80,6 +80,11 @@
   fld_split = .false.
   fld_numdt = 20000
   fld_bisect_tol = 1.d-5
+  fld_diff_testcase = .true.
+  fld_bound_min1 = 'periodic'
+  fld_bound_max1 = 'periodic'
+  fld_bound_min2 = 'fixed'
+  fld_bound_max2 = 'cont'
   fld_Diffusion = .true.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.

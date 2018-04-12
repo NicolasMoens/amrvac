@@ -59,7 +59,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 2.25d-5
+  dtpar =   2.25d-5
  /
 
  &hd_list

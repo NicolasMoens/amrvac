@@ -15,14 +15,16 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 10
-   ditsave_log     = 10
+   ditsave_dat     = 1
+   ditsave_log     = 1
+   dtsave_dat     = 1.d-4
+   dtsave_log     = 1.d-4
 /
 
  &stoplist
-   !time_max = 2.0d-3
+   !time_max = 1.d-2
    dtmin = 1.0d-20
-   it_max = 2000
+   it_max = 5
 /
 
  &methodlist
@@ -64,7 +66,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 1.d-6
+  dtpar = 5.d-5
  /
 
  &hd_list
@@ -78,7 +80,7 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 20000
+  fld_numdt = 1000000
   fld_bisect_tol = 1.d-5
   fld_diff_testcase = .true.
   fld_bound_min1 = 'periodic'
@@ -88,5 +90,5 @@
   fld_Diffusion = .true.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.
-  fld_Energy_advect = .false.
+  fld_Energy_advect = .true.
  /

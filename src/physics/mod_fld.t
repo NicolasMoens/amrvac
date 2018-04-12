@@ -307,7 +307,10 @@ module mod_fld
     E_new(ixI^S) = w(ixI^S,iw_r_e)
 
     call Evolve_ADI(w, x, E_new, E_old, fld_numdt, ixI^L, ixO^L)
-    call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+
+    call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+
+    print*, "Estimated ADI-ERROR", ADI_Error
 
     w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
@@ -342,7 +345,7 @@ module mod_fld
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
 
-    ADI_Error = maxval(abs((RHS-LHS)/RHS))
+    ADI_Error = maxval(abs((RHS-LHS)/RHS)) !> Try mean value or smtn
   end subroutine Error_check_ADI
 
 

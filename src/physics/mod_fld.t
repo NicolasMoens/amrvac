@@ -306,27 +306,19 @@ module mod_fld
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
     double precision :: temp_dt
-    integer :: w_max
+    integer :: w_max, frac_dt
     logical :: converged
 
     E_old(ixI^S) = w(ixI^S,iw_r_e)
     E_new(ixI^S) = w(ixI^S,iw_r_e)
 
     converged = .false.
-    w_max = 2
-    frac_grid = 4.d0
+    ADI_Error = bigdouble
+    w_max = 1
+    frac_grid = two
+    frac_dt = 1
 
     do while (converged .eqv. .false.)
-
-      !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
-      if (w_max .gt. fld_maxdw) then
-        call mpistop("de poppen zijn aan het dansen")
-      endif
-
-      !> Evolve using ADI
-      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
-      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
         converged = .true.
@@ -336,10 +328,56 @@ module mod_fld
         frac_grid = 2*frac_grid
         print*, w_max, frac_grid
       endif
+
+      !> Evolve using ADI
+      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+
+      !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
+      if (w_max .gt. fld_maxdw) then
+
+        frac_dt = frac_dt*2
+
+        print*, "Halving timestep:", frac_dt
+
+        !> use a smaller timestep than the hydrodynamical one
+        call half_timestep_ADI(w, x, E_new, E_old, 2, 4.d0, frac_dt, ixI^L, ixO^L)
+
+      endif
+
     enddo
 
     w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
+
+
+  subroutine half_timestep_ADI(w, x, E_new, E_old, w_max, frac_grid, frac_dt, ixI^L, ixO^L)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L, ixO^L, w_max, frac_dt
+    double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+    double precision, intent(in) :: frac_grid
+    double precision, intent(in) :: E_old(ixI^S)
+    double precision, intent(out) :: E_new(ixI^S)
+    double precision :: E_loc(ixI^S)
+    double precision :: saved_dt
+    integer :: i
+
+    saved_dt = dt
+    dt = dt/frac_dt
+
+    E_loc = E_old
+
+    do i = 1,frac_dt
+      call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
+      E_loc = E_new
+
+      print*, saved_dt, dt
+
+    enddo
+    dt = saved_dt
+
+  end subroutine half_timestep_ADI
 
 
   subroutine Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
@@ -382,12 +420,13 @@ module mod_fld
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L, ixO^L, w_max
-    double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
-    double precision, intent(inout) :: E_m(ixI^S), E_n(ixI^S)
+    double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim), frac_grid
+    double precision, intent(in) :: E_n(ixI^S)
+    double precision, intent(out):: E_m(ixI^S)
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
-    double precision :: dw, delta_x2, w0, w1, frac_grid
+    double precision :: dw, delta_x2, w0, w1
     integer :: m, j
 
     !> WHY CAN'T I USE dx ?!?!?!?!?

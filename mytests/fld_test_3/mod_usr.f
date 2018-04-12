@@ -123,7 +123,9 @@ end subroutine initglobaldata_usr
     integer :: i
 
 
-    amplitude = 5.d-2
+    !amplitude = 5.d-2
+    amplitude = zero
+
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
 
@@ -135,14 +137,18 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = density(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)/(hd_gamma - one)*(one + amplitude*pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2))
+    call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
-       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
+       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2))
 
     print*, "R_star", R_star0, L_star0
     print*, "R_star", R_star, L_star

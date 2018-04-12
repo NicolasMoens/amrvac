@@ -80,8 +80,9 @@
   fld_kappa = 0.34d0
   fld_mu = 0.6d0
   fld_split = .false.
-  fld_numdt = 1000000
-  fld_bisect_tol = 1.d-5
+  fld_maxdw = 2000
+  fld_bisect_tol = 1.d-3
+  fld_adi_tol = 15.d-1
   fld_diff_testcase = .true.
   fld_bound_min1 = 'periodic'
   fld_bound_max1 = 'periodic'

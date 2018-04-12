@@ -23,13 +23,15 @@ module mod_fld
     !> Dimensionless speed of light
     double precision, public :: fld_speedofligt_0
 
-    !> Timestep for supertimestepping on the radiation energy equation
-    !> the supertimestep == fld_numdt * dt, so this is a ratio!!!
-    integer, public :: fld_numdt = 10
+    !> Maximum amount of pseudotimesteps before trying something else
+    integer, public :: fld_maxdw = 100
 
     !> Tolerance for bisection method for Energy sourceterms
     !> This is a percentage of the minimum of gas- and radiation energy
     double precision, public :: fld_bisect_tol = 1.d-3
+
+    !> Tolerance for adi method for radiative Energy diffusion
+    double precision, public :: fld_adi_tol = 1.d-2
 
     !> Switch different terms on/off
     !> Solve parabolic system using ADI (Diffusion)
@@ -70,9 +72,9 @@ module mod_fld
     character(len=*), intent(in) :: files(:)
     integer                      :: n
 
-    namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
+    namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_maxdw, fld_Diffusion,&
     fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase,&
-    fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2
+    fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2, fld_adi_tol
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -106,7 +108,7 @@ module mod_fld
     call fld_params_read(par_files)
 
     !> Check if fld_numdt is not 1
-    if (fld_numdt .lt. 2) call mpistop("fld_numdt should be an integer larger than 1")
+    if (fld_maxdw .lt. 2) call mpistop("fld_maxdw should be an integer larger than 1")
 
     !> Make kappa dimensionless !!!STILL NEED TO MULTIPLY W RHO
     fld_kappa = fld_kappa*unit_time*unit_velocity*unit_density
@@ -302,15 +304,39 @@ module mod_fld
     double precision, intent(inout) :: w(ixI^S, 1:nw)
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
+    double precision :: frac_grid
+    double precision :: temp_dt
+    integer :: w_max
+    logical :: converged
 
     E_old(ixI^S) = w(ixI^S,iw_r_e)
     E_new(ixI^S) = w(ixI^S,iw_r_e)
 
-    call Evolve_ADI(w, x, E_new, E_old, fld_numdt, ixI^L, ixO^L)
+    converged = .false.
+    w_max = 2
+    frac_grid = 4.d0
 
-    call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+    do while (converged .eqv. .false.)
 
-    print*, "Estimated ADI-ERROR", ADI_Error
+      !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
+      if (w_max .gt. fld_maxdw) then
+        call mpistop("de poppen zijn aan het dansen")
+      endif
+
+      !> Evolve using ADI
+      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+
+      !> Check if solution converged
+      if (ADI_Error .lt. fld_adi_tol) then
+        converged = .true.
+      else
+        !> If no convergence, adapt pseudostepping
+        w_max = 2*w_max
+        frac_grid = 2*frac_grid
+        print*, w_max, frac_grid
+      endif
+    enddo
 
     w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
@@ -334,8 +360,8 @@ module mod_fld
     call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
 
     !> LHS = dx^2/dt * (E_new - E_old)
-    LHS(ixO^S) = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)*&
-    x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)/dt*&
+    LHS(ixO^S) = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*&
+    (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/dt*&
     (E_new(ixO^S) - E_old(ixO^S))
 
     !> RHS = D1(E_+ - E) - D1(E - E_-) + D2(E_+ - E) - D2(E - E_-)
@@ -345,11 +371,14 @@ module mod_fld
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
 
-    ADI_Error = maxval(abs((RHS-LHS)/RHS)) !> Try mean value or smtn
+    !ADI_Error = max(abs((RHS-LHS)/RHS))!> Try mean value or smtn
+    ADI_Error = sum(abs((RHS-LHS)/LHS))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
+    print*, "Estimated ADI-ERROR", ADI_Error
+    print*, "LHS", "RHS", LHS(10,20), RHS(10,20)
   end subroutine Error_check_ADI
 
 
-  subroutine Evolve_ADI(w, x, E_m, E_n, w_max, ixI^L, ixO^L)
+  subroutine Evolve_ADI(w, x, E_m, E_n, w_max, frac_grid, ixI^L, ixO^L)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L, ixO^L, w_max
@@ -358,16 +387,19 @@ module mod_fld
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
-    double precision :: dw, delta_x
+    double precision :: dw, delta_x2, w0, w1, frac_grid
     integer :: m, j
 
     !> WHY CAN'T I USE dx ?!?!?!?!?
-    delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
+    delta_x2 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))
+
+    w0 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/frac_grid
+    w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/4.d0
 
     do m = 1,w_max
 
       !> Set pseudotimestep
-      dw = delta_x/4.d0*(((x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2)))/delta_x)**((m-one)/(w_max-one))
+      dw = w0*(w1/w0)**((m-one)/(w_max-one))
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)

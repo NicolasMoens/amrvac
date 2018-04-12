@@ -20,7 +20,7 @@
 /
 
  &stoplist
-   time_max = 5.d-2
+   time_max = 5.d-1
    !dtmin = 1.0d-20
    !it_max = 100
 /
@@ -72,8 +72,9 @@
  fld_kappa = 0.34d0
  fld_mu = 0.6d0
  fld_split = .false.
- fld_numdt = 2
- fld_bisect_tol = 1.d-15
+ fld_maxdw = 200
+ fld_bisect_tol = 1.d-3
+ fld_adi_tol = 2.d-1
  fld_diff_testcase = .true.
  fld_bound_min1 = 'periodic'
  fld_bound_max1 = 'periodic'

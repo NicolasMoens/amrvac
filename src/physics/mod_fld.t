@@ -149,7 +149,7 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
-        call Evolve_ADI(w, x, fld_numdt, ixI^L, ixO^L)
+        call Evolve_E_rad(w, x, ixI^L, ixO^L)
       endif
 
       !> Add momentum sourceterms
@@ -295,21 +295,68 @@ module mod_fld
   end subroutine fld_get_flux
 
 
-  subroutine Evolve_ADI(w, x, w_max, ixI^L, ixO^L)
+  subroutine Evolve_E_rad(w, x, ixI^L, ixO^L)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L, ixO^L
+    double precision, intent(inout) :: w(ixI^S, 1:nw)
+    double precision, intent(in) :: x(ixI^S, 1:ndim)
+    double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
+
+    E_old(ixI^S) = w(ixI^S,iw_r_e)
+    E_new(ixI^S) = w(ixI^S,iw_r_e)
+
+    call Evolve_ADI(w, x, E_new, E_old, fld_numdt, ixI^L, ixO^L)
+    call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+
+    w(ixO^S,iw_r_e) = E_new(ixO^S)
+  end subroutine Evolve_E_rad
+
+
+  subroutine Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L, ixO^L
+    double precision, intent(in) :: x(ixI^S, 1:ndim), w(ixI^S, 1:nw)
+    double precision, intent(in) :: E_new(ixI^S), E_old(ixI^S)
+    double precision, intent(out) :: ADI_Error
+    double precision :: LHS(ixO^S), RHS(ixO^S), D(ixI^S,1:ndim)
+    integer :: jx1^L, hx1^L,jx2^L, hx2^L
+
+    jx1^L=ixO^L+kr(1,^D);
+    hx1^L=ixO^L-kr(1,^D);
+    jx2^L=ixO^L+kr(2,^D);
+    hx2^L=ixO^L-kr(2,^D);
+
+    call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
+
+    !> LHS = dx^2/dt * (E_new - E_old)
+    LHS(ixO^S) = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)*&
+    x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)/dt*&
+    (E_new(ixO^S) - E_old(ixO^S))
+
+    !> RHS = D1(E_+ - E) - D1(E - E_-) + D2(E_+ - E) - D2(E - E_-)
+    RHS(ixO^S) = &
+    D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
+    - D(ixO^S,1)*(E_new(ixO^S) - E_new(hx1^S))&
+    + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
+    - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
+
+    ADI_Error = maxval(abs((RHS-LHS)/RHS))
+  end subroutine Error_check_ADI
+
+
+  subroutine Evolve_ADI(w, x, E_m, E_n, w_max, ixI^L, ixO^L)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L, ixO^L, w_max
-    double precision, intent(inout) :: w(ixI^S, 1:nw)
-    double precision, intent(in) :: x(ixI^S, 1:ndim)
-    double precision :: E_m(ixI^S), E_n(ixI^S)
+    double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+    double precision, intent(inout) :: E_m(ixI^S), E_n(ixI^S)
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
     double precision :: dw, delta_x
     integer :: m, j
-
-    E_n(ixI^S) = w(ixI^S,iw_r_e)
-    E_m(ixI^S) = w(ixI^S,iw_r_e)
 
     !> WHY CAN'T I USE dx ?!?!?!?!?
     delta_x = min( (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)), (x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)) )
@@ -336,11 +383,62 @@ module mod_fld
         E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
       enddo
       call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
-
     enddo
-
-    w(ixO^S,iw_r_e) = E_m(ixO^S)
   end subroutine Evolve_ADI
+
+
+  subroutine fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
+    use mod_global_parameters
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    double precision, intent(in) :: w(ixI^S, 1:nw)
+    double precision, intent(in) :: x(ixI^S, 1:ndim)
+    double precision, intent(out):: D(ixI^S,1:ndim)
+    double precision :: fld_lambda(ixO^S), fld_R(ixO^S)
+    double precision :: D_center(ixI^S)
+    integer :: idir,i,j
+
+    if (fld_diff_testcase) then
+      D = one
+    else
+      !> calculate lambda
+      call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+
+      !> calculate diffusion coefficient
+      D_center(ixO^S) = fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho))
+
+      !> Extrapolate lambda to ghostcells
+      !> Edges
+      do i = 0,nghostcells-1
+        D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
+        D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
+        D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
+        D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
+      end do
+
+      !> Corners
+      do i = 0,nghostcells-1
+        do j = 0, nghostcells-1
+          D_center(ixImin1+i,ixImax2-j) = D_center(ixImin1+nghostcells,ixImax2-nghostcells)
+          D_center(ixImax1-i,ixImax2-j) = D_center(ixImax1-nghostcells,ixImax2-nghostcells)
+          D_center(ixImin1+i,ixImin2+j) = D_center(ixImin1+nghostcells,ixImin2+nghostcells)
+          D_center(ixImax1-i,ixImin2+j) = D_center(ixImax1-nghostcells,ixImin2+nghostcells)
+        end do
+      end do
+
+      !> Go from cell center to cell face
+      do i = ixImin1+1, ixImax1
+      do j = ixImin2+1, ixImax2
+        D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
+        D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+      enddo
+      enddo
+      D(ixImin1,:,1) = D_center(ixImin1,:)
+      D(:,ixImin2,1) = D_center(:,ixImin2)
+      D(ixImin1,:,2) = D_center(ixImin1,:)
+      D(:,ixImin2,2) = D_center(:,ixImin2)
+    endif
+  end subroutine fld_get_diffcoef
 
 
   subroutine make_matrix(x,w,dw,E_m,E_n,sweepdir,ixImax,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
@@ -355,51 +453,10 @@ module mod_fld
     double precision, intent(out):: sup1(ixImin1:ixImax1,ixImin2:ixImax2),bvec1(ixImin1:ixImax1,ixImin2:ixImax2)
     double precision, intent(out):: diag2(ixImin2:ixImax2,ixImin1:ixImax1),sub2(ixImin2:ixImax2,ixImin1:ixImax1)
     double precision, intent(out):: sup2(ixImin2:ixImax2,ixImin1:ixImax1),bvec2(ixImin2:ixImax2,ixImin1:ixImax1)
-    double precision :: fld_lambda(ixO^S), fld_R(ixO^S)
-    double precision :: D_center(ixI^S), D(ixI^S,1:ndim), h, beta(ixImax), delta_x
-    double precision :: grad_r_e(ixI^S, 1:ndim)
+    double precision :: D(ixI^S,1:ndim), h, beta(ixImax), delta_x
     integer :: idir,i,j
 
-    !> calculate lambda
-    call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
-
-    !> calculate diffusion coefficient
-    D_center(ixO^S) = fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa*w(ixO^S,iw_rho))
-
-    !> Extrapolate lambda to ghostcells
-    !> Edges
-    do i = 0,nghostcells-1
-      D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
-      D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
-      D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
-      D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
-    end do
-
-    !> Corners
-    do i = 0,nghostcells-1
-      do j = 0, nghostcells-1
-        D_center(ixImin1+i,ixImax2-j) = D_center(ixImin1+nghostcells,ixImax2-nghostcells)
-        D_center(ixImax1-i,ixImax2-j) = D_center(ixImax1-nghostcells,ixImax2-nghostcells)
-        D_center(ixImin1+i,ixImin2+j) = D_center(ixImin1+nghostcells,ixImin2+nghostcells)
-        D_center(ixImax1-i,ixImin2+j) = D_center(ixImax1-nghostcells,ixImin2+nghostcells)
-      end do
-    end do
-
-    !> Go from cell center to cell face
-    do i = ixImin1+1, ixImax1
-    do j = ixImin2+1, ixImax2
-      D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
-      D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
-    enddo
-    enddo
-    D(ixImin1,:,1) = D_center(ixImin1,:)
-    D(:,ixImin2,1) = D_center(:,ixImin2)
-    D(ixImin1,:,2) = D_center(ixImin1,:)
-    D(:,ixImin2,2) = D_center(:,ixImin2)
-
-    if (fld_diff_testcase) then
-      D = one
-    endif
+    call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
 
     !calculate h
     if (sweepdir == 1) then

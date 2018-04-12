@@ -15,14 +15,14 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 10
-   ditsave_log     = 10
+   dtsave_log     = 1.d-3
+   dtsave_dat     = 1.d-2
 /
 
  &stoplist
-   !time_max = 2.0d-3
+   time_max = 5.d-2
    !dtmin = 1.0d-20
-   it_max = 1000
+   !it_max = 100
 /
 
  &methodlist
@@ -39,16 +39,15 @@
   typeboundary_max1 = 5*'periodic'
   typeboundary_min2 = 5*'periodic'
   typeboundary_max2 = 5*'periodic'
-  typeghostfill= 'copy'
   internalboundary = T
 /
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 30
-   domain_nx2         = 30
-   block_nx2          = 30
-   block_nx1          = 30
+   domain_nx1         = 100
+   domain_nx2         = 100
+   block_nx2          = 100
+   block_nx1          = 100
    xprobmin1       =  -0.5d0
    xprobmax1       =  0.5d0
    xprobmin2       =  0.0d0
@@ -60,7 +59,7 @@
 
  &paramlist
   !courantpar       = 0.6d0
-  dtpar = 1.d-5
+  dtpar = 8.d-5 !2.25d-5
  /
 
  &hd_list
@@ -73,7 +72,7 @@
  fld_kappa = 0.34d0
  fld_mu = 0.6d0
  fld_split = .false.
- fld_numdt = 1000
+ fld_numdt = 2
  fld_bisect_tol = 1.d-15
  fld_diff_testcase = .true.
  fld_Rad_force = .false.

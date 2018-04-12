@@ -321,7 +321,7 @@ module mod_fld
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
         E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
       enddo
-      call ADI_boundary_conditions(ixI^L,E_m,w)
+      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
 
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
@@ -330,7 +330,7 @@ module mod_fld
         call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
         E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
       enddo
-      call ADI_boundary_conditions(ixI^L,E_m,w)
+      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
 
     enddo
 
@@ -498,34 +498,44 @@ module mod_fld
   end subroutine solve_tridiag
 
 
-  subroutine ADI_boundary_conditions(ixI^L,E_m,w)
+  subroutine ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
     use mod_global_parameters
 
-    integer, intent(in) :: ixI^L
+    integer, intent(in) :: ixI^L,ixO^L
     double precision, intent(in) :: w(ixI^S,1:nw)
     double precision, intent(inout) :: E_m(ixI^S)
     integer g, h
 
+    ! !Edges
+    ! do g = 0,nghostcells-1
+    ! !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+    !   E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
+    !   E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
+    !   E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
+    !   E_m(:,ixImax2-g) = w(:,ixImax2-nghostcells,iw_r_e)
+    ! end do
+    !
+    ! !Corners
+    ! do g = 0,nghostcells-1
+    ! !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+    !   do h = 0, nghostcells-1
+    !   !do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
+    !     E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
+    !     E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
+    !     E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
+    !     E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
+    !   end do
+    ! end do
+
     !Edges
     do g = 0,nghostcells-1
     !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-      E_m(ixImin1+g,:) = w(ixImin1+nghostcells,:,iw_r_e)
-      E_m(ixImax1-g,:) = w(ixImax1-nghostcells,:,iw_r_e)
-      E_m(:,ixImin2+g) = w(:,ixImin2+nghostcells,iw_r_e)
-      E_m(:,ixImax2-g) = w(:,ixImax2-nghostcells,iw_r_e)
+      E_m(ixImin1+g,:) = w(ixOmax1,:,iw_r_e)
+      E_m(ixImax1-g,:) = w(ixOmin1,:,iw_r_e)
+      E_m(:,ixImin2+g) = w(:,ixOmax2,iw_r_e)
+      E_m(:,ixImax2-g) = w(:,ixOmin2,iw_r_e)
     end do
 
-    !Corners
-    do g = 0,nghostcells-1
-    !do g = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-      do h = 0, nghostcells-1
-      !do h = 0,nghostcells !> THIS IS VERRRYYYYY SJOEMEL-Y
-        E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
-        E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
-        E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
-        E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
-      end do
-    end do
   end subroutine ADI_boundary_conditions
 
 

@@ -22,15 +22,6 @@ contains
 
     call set_coordinate_system("Cartesian_2D")
 
-    ! !Fix dimensionless stuff here
-    ! unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
-    ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
-    ! unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
-
-    unit_velocity = const_c
-    unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
-    unit_length = one/const_c
-
     ! Initialize units
     usr_set_parameters => initglobaldata_usr
 
@@ -97,7 +88,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + 1.569034853d0**(-8.d0*dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
+      e0(i,j) =  two + 1.569034853d0**(-8.d0*dpi**2*t1)*dsin(2*dpi*x(i,j,1))*dsin(2*dpi*x(i,j,2))
       enddo
     enddo
 

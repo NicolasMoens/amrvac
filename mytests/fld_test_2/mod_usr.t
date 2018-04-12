@@ -40,9 +40,9 @@ contains
     ! Keep the radiative energy constant with internal bound
     usr_internal_bc => constant_var
 
-    ! ! Output routines
-    ! usr_aux_output    => specialvar_output
-    ! usr_add_aux_names => specialvarnames_output
+    ! Output routines
+    usr_aux_output    => specialvar_output
+    usr_add_aux_names => specialvarnames_output
 
     ! Active the physics module
     call hd_activate()
@@ -97,7 +97,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + 1.569034853d0**(-8*dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
+      e0(i,j) =  two + 1.569034853d0**(-8.d0*dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
       enddo
     enddo
 
@@ -149,23 +149,23 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   double precision, intent(in)       :: x(ixI^S,1:ndim)
   double precision                   :: w(ixI^S,nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
-  !double precision                   :: residual(ixI^S)
-  double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
+  double precision                   :: residual(ixI^S)
+  ! double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
 
-  call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
-  call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
-  call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+  ! call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
+  ! call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
+  ! call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-  ! residual(ixI^S) = spotpattern(x,ixI^L,global_time)
-  ! residual(ixI^S) = (residual(ixI^S) - w(ixI^S,r_e))/residual(ixI^S)
+  residual(ixI^S) = spotpattern(x,ixI^L,global_time)
+  residual(ixI^S) = (residual(ixI^S) - w(ixI^S,r_e))/residual(ixI^S)
 
-  !w(ixO^S,nw+1) = residual(ixO^S)
+  w(ixO^S,nw+1) = residual(ixO^S)
 
-  w(ixO^S,nw+1)=rad_flux(ixO^S,1)
-  w(ixO^S,nw+2)=rad_flux(ixO^S,2)
-  w(ixO^S,nw+3)=rad_pressure(ixO^S)
-  w(ixO^S,nw+4)=fld_lambda(ixO^S)
-  w(ixO^S,nw+5)=fld_R(ixO^S)
+  ! w(ixO^S,nw+1)=rad_flux(ixO^S,1)
+  ! w(ixO^S,nw+2)=rad_flux(ixO^S,2)
+  ! w(ixO^S,nw+3)=rad_pressure(ixO^S)
+  ! w(ixO^S,nw+4)=fld_lambda(ixO^S)
+  ! w(ixO^S,nw+5)=fld_R(ixO^S)
 
 
 end subroutine specialvar_output
@@ -175,8 +175,8 @@ subroutine specialvarnames_output(varnames)
   use mod_global_parameters
   character(len=*) :: varnames
 
-  !varnames = 'residual'
-  varnames = 'F1 F2 RP lam fld_R'
+  varnames = 'residual'
+  ! varnames = 'F1 F2 RP lam fld_R'
 
 end subroutine specialvarnames_output
 

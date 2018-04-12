@@ -44,6 +44,10 @@ module mod_fld
     !> Let Vac advect radiative energy
     logical :: fld_Energy_advect = .true.
 
+
+    !> Set Diffusion coefficient to unity
+    logical :: fld_diff_testcase = .false.
+
     !> public methods
     !> these are called in mod_hd_phys
     public :: fld_add_source
@@ -62,7 +66,7 @@ module mod_fld
     integer                      :: n
 
     namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_numdt, fld_Diffusion,&
-    fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol
+    fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -308,7 +312,7 @@ module mod_fld
     do m = 1,w_max
 
       !> Set pseudotimestep
-      dw = delta_x/4.d0*(min(x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1),x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/delta_x)**((m-one)/(w_max-one))
+      dw = delta_x/4.d0*(((x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2)))/delta_x)**((m-one)/(w_max-one))
 
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
@@ -388,6 +392,10 @@ module mod_fld
     D(:,ixImin2,1) = D_center(:,ixImin2)
     D(ixImin1,:,2) = D_center(ixImin1,:)
     D(:,ixImin2,2) = D_center(:,ixImin2)
+
+    if (fld_diff_testcase) then
+      D = one
+    endif
 
     !calculate h
     if (sweepdir == 1) then

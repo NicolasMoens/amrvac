@@ -9,20 +9,20 @@
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = F
-  nwauxio = 0
+  nwauxio = 1
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 100
-   ditsave_log     = 100
+   ditsave_dat     = 10
+   ditsave_log     = 10
 /
 
  &stoplist
    !time_max = 2.0d-3
    !dtmin = 1.0d-20
-   it_max = 10000
+   it_max = 1000
 /
 
  &methodlist
@@ -75,6 +75,7 @@
  fld_split = .false.
  fld_numdt = 1000
  fld_bisect_tol = 1.d-15
+ fld_diff_testcase = .true.
  fld_Rad_force = .false.
  fld_Diffusion = .true.
  fld_Energy_advect = .false.

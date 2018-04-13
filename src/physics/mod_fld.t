@@ -33,6 +33,8 @@ module mod_fld
     !> Tolerance for adi method for radiative Energy diffusion
     double precision, public :: fld_adi_tol = 1.d-2
 
+    double precision :: fld_max_fracdt = 10.d0
+
     !> Switch different terms on/off
     !> Solve parabolic system using ADI (Diffusion)
     logical :: fld_Diffusion = .true.
@@ -306,8 +308,11 @@ module mod_fld
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
     double precision :: temp_dt
-    integer :: w_max, frac_dt
+    integer :: w_max, frac_dt, i
+    !TEST - JS
     logical :: converged
+
+    print*, it, "###########################################################"
 
     E_old(ixI^S) = w(ixI^S,iw_r_e)
     E_new(ixI^S) = w(ixI^S,iw_r_e)
@@ -319,9 +324,13 @@ module mod_fld
     frac_dt = 1
 
     do while (converged .eqv. .false.)
+      !> Reset E_new
+      E_new = E_old
+
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
         converged = .true.
+        goto 3000
       else
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
@@ -330,22 +339,27 @@ module mod_fld
       endif
 
       !> Evolve using ADI
+      !print*, E_new(5,5), E_old(5,5), "BEFORE"
       call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+      !print*, E_new(5,5), E_old(5,5)
+      print*,'AFTER PESUDO UPDATE'
+      do i=1,iximax2
+        print*,i,E_new(5,i),E_new(10,i)
+      enddo
+      !
       call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+      !print*, E_new(5,5), E_old(5,5), "AFTER"
+
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
-
         frac_dt = frac_dt*2
-
         print*, "Halving timestep:", frac_dt
-
         !> use a smaller timestep than the hydrodynamical one
         call half_timestep_ADI(w, x, E_new, E_old, 2, 4.d0, frac_dt, ixI^L, ixO^L)
-
       endif
-
     enddo
+    3000 print*,'DONE!'
 
     w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
@@ -363,6 +377,8 @@ module mod_fld
     double precision :: saved_dt
     integer :: i
 
+    if (frac_dt .gt. fld_max_fracdt) call mpistop("No convergence after halving timestep N times")
+
     saved_dt = dt
     dt = dt/frac_dt
 
@@ -373,8 +389,8 @@ module mod_fld
       E_loc = E_new
 
       print*, saved_dt, dt
-
     enddo
+
     dt = saved_dt
 
   end subroutine half_timestep_ADI
@@ -409,8 +425,8 @@ module mod_fld
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
 
-    !ADI_Error = max(abs((RHS-LHS)/RHS))!> Try mean value or smtn
-    ADI_Error = sum(abs((RHS-LHS)/LHS))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
+    !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
+    ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
     print*, "Estimated ADI-ERROR", ADI_Error
     print*, "LHS", "RHS", LHS(10,20), RHS(10,20)
   end subroutine Error_check_ADI

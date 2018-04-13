@@ -33,7 +33,7 @@ module mod_fld
     !> Tolerance for adi method for radiative Energy diffusion
     double precision, public :: fld_adi_tol = 1.d-2
 
-    double precision :: fld_max_fracdt = 10.d0
+    double precision :: fld_max_fracdt = 50.d0
 
     !> Switch different terms on/off
     !> Solve parabolic system using ADI (Diffusion)
@@ -76,7 +76,7 @@ module mod_fld
 
     namelist /fld_list/ fld_kappa, fld_mu, fld_split, fld_maxdw, fld_Diffusion,&
     fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase,&
-    fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2, fld_adi_tol
+    fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2, fld_adi_tol, fld_max_fracdt
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -153,7 +153,11 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
+        print*, it, "###########################################################"
+
+        print*, w(5,5,iw_r_e), "Before calling Evolve_E_rad"
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
+        print*, w(5,5,iw_r_e), "After calling Evolve_E_rad"
       endif
 
       !> Add momentum sourceterms
@@ -307,15 +311,16 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
-    double precision :: temp_dt
-    integer :: w_max, frac_dt, i
+    integer :: w_max, frac_dt, i, j
     !TEST - JS
     logical :: converged
 
-    print*, it, "###########################################################"
+    print*, E_old(5,5), E_new(5,5), "Before assigning"
 
-    E_old(ixI^S) = w(ixI^S,iw_r_e)
+    !E_old(ixI^S) = w(ixI^S,iw_r_e)
     E_new(ixI^S) = w(ixI^S,iw_r_e)
+
+    print*, E_old(5,5), E_new(5,5), "After assigning"
 
     converged = .false.
     ADI_Error = bigdouble
@@ -324,44 +329,59 @@ module mod_fld
     frac_dt = 1
 
     do while (converged .eqv. .false.)
+    !do i = 1,3
+
+      print*, "----------------------------------------------------"
+
+
+      print*, E_old(5,5), E_new(5,5), "Before assigning, in while loop"
+
       !> Reset E_new
-      E_new = E_old
+      E_old(ixI^S) = w(ixI^S,iw_r_e)
+      E_new(ixI^S) = w(ixI^S,iw_r_e)
+
+      print*, E_old(5,5), E_new(5,5), "After assigning, in while loop"
 
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
+        !> If converged in former loop, break loop
         converged = .true.
         goto 3000
+        print*, "----------------------------------------------------"
+
       else
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
-        print*, w_max, frac_grid
+        ! print*,'w_max =', w_max, frac_grid
       endif
 
-      !> Evolve using ADI
-      !print*, E_new(5,5), E_old(5,5), "BEFORE"
-      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
-      !print*, E_new(5,5), E_old(5,5)
-      print*,'AFTER PESUDO UPDATE'
-      do i=1,iximax2
-        print*,i,E_new(5,i),E_new(10,i)
-      enddo
-      !
-      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-      !print*, E_new(5,5), E_old(5,5), "AFTER"
+      print*, E_old(5,5), E_new(5,5), "Before calling ADI, in while loop"
 
+      !> Evolve using ADI
+      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+      ! do i=1,iximax2
+      !   print*,i,E_new(5,i),E_old(5,i),E_new(5,i)/E_old(5,i)-one
+      ! enddo
+
+      print*, E_old(5,5), E_new(5,5), "After calling ADI, in while loop"
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
         frac_dt = frac_dt*2
-        print*, "Halving timestep:", frac_dt
+        ! print*, "Halving timestep:", frac_dt
         !> use a smaller timestep than the hydrodynamical one
         call half_timestep_ADI(w, x, E_new, E_old, 2, 4.d0, frac_dt, ixI^L, ixO^L)
       endif
-    enddo
-    3000 print*,'DONE!'
 
-    w(ixO^S,iw_r_e) = E_new(ixO^S)
+      print*, "Error :", ADI_Error
+      print*, "----------------------------------------------------"
+
+    enddo
+
+    3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
+    print*, E_old(5,5), E_new(5,5), "After while loop"
   end subroutine Evolve_E_rad
 
 
@@ -427,31 +447,37 @@ module mod_fld
 
     !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
-    print*, "Estimated ADI-ERROR", ADI_Error
-    print*, "LHS", "RHS", LHS(10,20), RHS(10,20)
+    ! print*, "Estimated ADI-ERROR", ADI_Error
+    ! print*, "LHS", "RHS", LHS(10,20), RHS(10,20)
   end subroutine Error_check_ADI
 
 
-  subroutine Evolve_ADI(w, x, E_m, E_n, w_max, frac_grid, ixI^L, ixO^L)
+  subroutine Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L, ixO^L, w_max
     double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim), frac_grid
-    double precision, intent(in) :: E_n(ixI^S)
-    double precision, intent(out):: E_m(ixI^S)
+    double precision, intent(in) :: E_old(ixI^S)
+    double precision, intent(out):: E_new(ixI^S)
+    double precision :: E_m(ixI^S), E_n(ixI^S)
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
-    double precision :: dw, delta_x2, w0, w1
+    double precision :: dw, w0, w1
     integer :: m, j
 
-    !> WHY CAN'T I USE dx ?!?!?!?!?
-    delta_x2 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))
-
     w0 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/frac_grid
-    w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/4.d0
+    w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/frac_grid !4.d0
+
+    E_m = E_new
+
+    ! ! print*, "m: ",w0*(w1/w0)**(((1:w_max))-one)/(w_max-one))
+    ! do m = 1,w_max
+    !   print*, "m: ",w0*(w1/w0)**((m-one)/(w_max-one)), w0, w1
+    ! enddo
 
     do m = 1,w_max
+      E_n = E_old
 
       !> Set pseudotimestep
       dw = w0*(w1/w0)**((m-one)/(w_max-one))
@@ -474,6 +500,7 @@ module mod_fld
       enddo
       call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
     enddo
+    E_new = E_m
   end subroutine Evolve_ADI
 
 
@@ -700,8 +727,8 @@ module mod_fld
       E_m(:,ixImax2:ixOmax2+1) = E_m(:,ixOmin2+1:ixOmin2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
-      E_m(:,ixOmax2+1) = 2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
-      E_m(:,ixImax2) = 2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
+      E_m(:,ixOmax2+1) = zero !2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
+      E_m(:,ixImax2) = zero !2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
     case('fixed')
       E_m(:,ixImax2:ixOmax2+1) = w(:,ixImax2:ixOmax2+1,iw_r_e)
     case default

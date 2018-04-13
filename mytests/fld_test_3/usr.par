@@ -24,7 +24,7 @@
  &stoplist
    !time_max = 1.d-2
    dtmin = 1.0d-20
-   it_max = 5
+   it_max = 100
 /
 
  &methodlist
@@ -91,5 +91,5 @@
   fld_Diffusion = .true.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.
-  fld_Energy_advect = .true.
+  fld_Energy_advect = .false.
  /

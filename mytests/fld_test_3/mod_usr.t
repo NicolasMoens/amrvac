@@ -119,7 +119,7 @@ end subroutine initglobaldata_usr
     integer :: i
 
 
-    amplitude = 5.d-2
+    amplitude = zero !1.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -131,12 +131,12 @@ end subroutine initglobaldata_usr
 
     ! Set initial values for w
     call RANDOM_NUMBER(pert)
-    w(ixG^S, rho_) = density(ixG^S)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
     w(ixG^S, mom(:)) = zero
     call RANDOM_NUMBER(pert)
-    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)*(one + amplitude*pert(ixG^S))
     call RANDOM_NUMBER(pert)
-    w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)*(one + amplitude*pert(ixG^S))
 
     !w(ixG^S,r_e) = w(ixG^S,r_e)*(one + dsin(x(ixG^S,1)))
 
@@ -233,7 +233,7 @@ end subroutine initglobaldata_usr
       double precision :: pressure(ixI^S)
 
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
-      w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
+      !w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
 
     end subroutine constant_e
 

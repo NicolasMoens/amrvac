@@ -123,7 +123,7 @@ end subroutine initglobaldata_usr
     integer :: i
 
 
-    amplitude = zero !1.d-2
+    amplitude = 10.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound

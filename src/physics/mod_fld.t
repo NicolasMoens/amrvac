@@ -369,10 +369,9 @@ module mod_fld
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
-        frac_dt = frac_dt*2
         ! print*, "Halving timestep:", frac_dt
         !> use a smaller timestep than the hydrodynamical one
-        call half_timestep_ADI(w, x, E_new, E_old, 2, 4.d0, frac_dt, ixI^L, ixO^L)
+        call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
       endif
 
       print*, "Error :", ADI_Error
@@ -385,35 +384,104 @@ module mod_fld
   end subroutine Evolve_E_rad
 
 
-  subroutine half_timestep_ADI(w, x, E_new, E_old, w_max, frac_grid, frac_dt, ixI^L, ixO^L)
+
+  subroutine half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
     use mod_global_parameters
 
-    integer, intent(in) :: ixI^L, ixO^L, w_max, frac_dt
+    integer, intent(in) :: ixI^L, ixO^L
     double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
-    double precision, intent(in) :: frac_grid
     double precision, intent(in) :: E_old(ixI^S)
     double precision, intent(out) :: E_new(ixI^S)
+    logical, intent(inout) :: converged
+    double precision :: frac_grid
     double precision :: E_loc(ixI^S)
-    double precision :: saved_dt
-    integer :: i
-
-    if (frac_dt .gt. fld_max_fracdt) call mpistop("No convergence after halving timestep N times")
+    double precision :: saved_dt, ADI_Error
+    integer :: i,  w_max, frac_dt
 
     saved_dt = dt
+
+    ADI_Error = bigdouble
+    frac_dt = 1
+
+    5231 frac_dt = 2*frac_dt
+    print*, frac_dt
+
+    w_max = 1
+    frac_grid = two
+
+    if (frac_dt .gt. fld_max_fracdt) call mpistop("No convergence after halving timestep N times")
     dt = dt/frac_dt
 
     E_loc = E_old
 
     do i = 1,frac_dt
-      call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
+      !---------------------------------------------------------------
+      do while (converged .eqv. .false.)
+        !> Check if solution converged
+        if (ADI_Error .lt. fld_adi_tol) then
+          !> If converged in former loop, break loop
+          converged = .true.
+          goto 7895
+        else
+          !> If no convergence, adapt pseudostepping
+          w_max = 2*w_max
+          frac_grid = 2*frac_grid
+        endif
+
+        !> Evolve using ADI
+        print*, E_new(5,5), "Before"
+        print*, E_loc(5,5), w_max, frac_grid
+        call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
+        print*, E_new(5,5), "After"
+        call Error_check_ADI(w, x, E_new, E_loc, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+
+        print*, "Error :", ADI_Error
+
+        !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
+        if (w_max .gt. fld_maxdw) goto 5231
+
+      enddo
+      !---------------------------------------------------------------
+      !call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
       E_loc = E_new
 
       print*, saved_dt, dt
     enddo
 
-    dt = saved_dt
+    7895 dt = saved_dt
 
   end subroutine half_timestep_ADI
+
+
+  ! subroutine half_timestep_ADI(w, x, E_new, E_old, w_max, frac_grid, frac_dt, ixI^L, ixO^L)
+  !   use mod_global_parameters
+  !
+  !   integer, intent(in) :: ixI^L, ixO^L, w_max, frac_dt
+  !   double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
+  !   double precision, intent(in) :: frac_grid
+  !   double precision, intent(in) :: E_old(ixI^S)
+  !   double precision, intent(out) :: E_new(ixI^S)
+  !   double precision :: E_loc(ixI^S)
+  !   double precision :: saved_dt
+  !   integer :: i
+  !
+  !   if (frac_dt .gt. fld_max_fracdt) call mpistop("No convergence after halving timestep N times")
+  !
+  !   saved_dt = dt
+  !   dt = dt/frac_dt
+  !
+  !   E_loc = E_old
+  !
+  !   do i = 1,frac_dt
+  !     call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
+  !     E_loc = E_new
+  !
+  !     print*, saved_dt, dt
+  !   enddo
+  !
+  !   dt = saved_dt
+  !
+  ! end subroutine half_timestep_ADI
 
 
   subroutine Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)

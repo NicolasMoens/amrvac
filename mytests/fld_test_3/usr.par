@@ -22,9 +22,9 @@
 /
 
  &stoplist
-   !time_max = 1.d-2
+   time_max = 1.d-2
    dtmin = 1.0d-20
-   it_max = 100
+   !it_max = 100
 /
 
  &methodlist
@@ -83,7 +83,7 @@
   fld_maxdw = 2000
   fld_bisect_tol = 1.d-3
   fld_adi_tol = 15.d-1
-  fld_diff_testcase = .true.
+  fld_diff_testcase = .false.
   fld_bound_min1 = 'periodic'
   fld_bound_max1 = 'periodic'
   fld_bound_min2 = 'fixed'
@@ -91,5 +91,5 @@
   fld_Diffusion = .true.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.
-  fld_Energy_advect = .false.
+  fld_Energy_advect = .true.
  /

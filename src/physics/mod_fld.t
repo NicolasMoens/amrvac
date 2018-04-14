@@ -153,11 +153,7 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
-        print*, it, "###########################################################"
-
-        print*, w(5,5,iw_r_e), "Before calling Evolve_E_rad"
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
-        print*, w(5,5,iw_r_e), "After calling Evolve_E_rad"
       endif
 
       !> Add momentum sourceterms
@@ -180,11 +176,11 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out0')
-      ! write(1,222) it,global_time,w(4,4,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
+      !> Write energy to file
+      if (it == 0) open(1,file='energy_out0')
+      write(1,222) it,global_time,w(4,4,iw_e)
+      if (it == it_max) close(1)
+      222 format(i8,2e15.5E3)
 
     end if
   end subroutine fld_add_source
@@ -311,16 +307,10 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
-    integer :: w_max, frac_dt, i, j
-    !TEST - JS
+    integer :: w_max, frac_dt
     logical :: converged
 
-    print*, E_old(5,5), E_new(5,5), "Before assigning"
-
-    !E_old(ixI^S) = w(ixI^S,iw_r_e)
     E_new(ixI^S) = w(ixI^S,iw_r_e)
-
-    print*, E_old(5,5), E_new(5,5), "After assigning"
 
     converged = .false.
     ADI_Error = bigdouble
@@ -329,34 +319,22 @@ module mod_fld
     frac_dt = 1
 
     do while (converged .eqv. .false.)
-    !do i = 1,3
-
-      print*, "----------------------------------------------------"
-
-
-      print*, E_old(5,5), E_new(5,5), "Before assigning, in while loop"
 
       !> Reset E_new
       E_old(ixI^S) = w(ixI^S,iw_r_e)
       E_new(ixI^S) = w(ixI^S,iw_r_e)
-
-      print*, E_old(5,5), E_new(5,5), "After assigning, in while loop"
 
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
         !> If converged in former loop, break loop
         converged = .true.
         goto 3000
-        print*, "----------------------------------------------------"
-
       else
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
         ! print*,'w_max =', w_max, frac_grid
       endif
-
-      print*, E_old(5,5), E_new(5,5), "Before calling ADI, in while loop"
 
       !> Evolve using ADI
       call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
@@ -365,22 +343,15 @@ module mod_fld
       !   print*,i,E_new(5,i),E_old(5,i),E_new(5,i)/E_old(5,i)-one
       ! enddo
 
-      print*, E_old(5,5), E_new(5,5), "After calling ADI, in while loop"
-
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
         ! print*, "Halving timestep:", frac_dt
         !> use a smaller timestep than the hydrodynamical one
         call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
       endif
-
-      print*, "Error :", ADI_Error
-      print*, "----------------------------------------------------"
-
     enddo
 
     3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
-    print*, E_old(5,5), E_new(5,5), "After while loop"
   end subroutine Evolve_E_rad
 
 
@@ -429,27 +400,20 @@ module mod_fld
         endif
 
         !> Evolve using ADI
-        print*, E_new(5,5), "Before"
-        print*, E_loc(5,5), w_max, frac_grid
         call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
-        print*, E_new(5,5), "After"
         call Error_check_ADI(w, x, E_new, E_loc, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-
-        print*, "Error :", ADI_Error
 
         !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
         if (w_max .gt. fld_maxdw) goto 5231
 
       enddo
       !---------------------------------------------------------------
-      !call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
       E_loc = E_new
 
       print*, saved_dt, dt
     enddo
 
     7895 dt = saved_dt
-
   end subroutine half_timestep_ADI
 
 

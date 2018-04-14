@@ -17,7 +17,7 @@ contains
     use mod_constants
 
     double precision :: rho_0 = 1.d-7
-    double precision :: t_0 = 1.d-12
+    double precision :: t_0 = 1.d-11
     double precision :: e_0 = 1.d12
 
     call set_coordinate_system("Cartesian_2D")

@@ -160,9 +160,9 @@ end subroutine initglobaldata_usr
     print*, rho_bound*unit_density, p_bound*unit_pressure
     print*, "factor", 3.d0*Gamma/(one-Gamma)
 
-    do i=ixGmin2,ixGmax2
-      print*, x(5,i,2),w(5,i,rho_)*unit_density
-    enddo
+    ! do i=ixGmin2,ixGmax2
+    !   print*, x(5,i,2),w(5,i,rho_)*unit_density
+    ! enddo
 
   end subroutine initial_conditions
 
@@ -233,7 +233,7 @@ end subroutine initglobaldata_usr
       double precision :: pressure(ixI^S)
 
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
-      !w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
+      w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
 
     end subroutine constant_e
 

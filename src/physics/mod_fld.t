@@ -1,4 +1,6 @@
+!> Nicolas Moens
 !> Module for including flux limited diffusion in hydrodynamics simulations
+!> Based on Turner and stone 2001
 module mod_fld
     implicit none
 
@@ -176,11 +178,11 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      !> Write energy to file
-      if (it == 0) open(1,file='energy_out0')
-      write(1,222) it,global_time,w(4,4,iw_e)
-      if (it == it_max) close(1)
-      222 format(i8,2e15.5E3)
+      ! !> Write energy to file
+      ! if (it == 0) open(1,file='energy_out0')
+      ! write(1,222) it,global_time,w(4,4,iw_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,2e15.5E3)
 
     end if
   end subroutine fld_add_source
@@ -333,19 +335,14 @@ module mod_fld
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
-        ! print*,'w_max =', w_max, frac_grid
       endif
 
       !> Evolve using ADI
       call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
       call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-      ! do i=1,iximax2
-      !   print*,i,E_new(5,i),E_old(5,i),E_new(5,i)/E_old(5,i)-one
-      ! enddo
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
-        ! print*, "Halving timestep:", frac_dt
         !> use a smaller timestep than the hydrodynamical one
         call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
       endif
@@ -353,7 +350,6 @@ module mod_fld
 
     3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
-
 
 
   subroutine half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
@@ -370,13 +366,9 @@ module mod_fld
     integer :: i,  w_max, frac_dt
 
     saved_dt = dt
-
     ADI_Error = bigdouble
     frac_dt = 1
-
     5231 frac_dt = 2*frac_dt
-    print*, frac_dt
-
     w_max = 1
     frac_grid = two
 
@@ -409,43 +401,10 @@ module mod_fld
       enddo
       !---------------------------------------------------------------
       E_loc = E_new
-
-      print*, saved_dt, dt
     enddo
 
     7895 dt = saved_dt
   end subroutine half_timestep_ADI
-
-
-  ! subroutine half_timestep_ADI(w, x, E_new, E_old, w_max, frac_grid, frac_dt, ixI^L, ixO^L)
-  !   use mod_global_parameters
-  !
-  !   integer, intent(in) :: ixI^L, ixO^L, w_max, frac_dt
-  !   double precision, intent(in) :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
-  !   double precision, intent(in) :: frac_grid
-  !   double precision, intent(in) :: E_old(ixI^S)
-  !   double precision, intent(out) :: E_new(ixI^S)
-  !   double precision :: E_loc(ixI^S)
-  !   double precision :: saved_dt
-  !   integer :: i
-  !
-  !   if (frac_dt .gt. fld_max_fracdt) call mpistop("No convergence after halving timestep N times")
-  !
-  !   saved_dt = dt
-  !   dt = dt/frac_dt
-  !
-  !   E_loc = E_old
-  !
-  !   do i = 1,frac_dt
-  !     call Evolve_ADI(w, x, E_new, E_loc, w_max, frac_grid, ixI^L, ixO^L)
-  !     E_loc = E_new
-  !
-  !     print*, saved_dt, dt
-  !   enddo
-  !
-  !   dt = saved_dt
-  !
-  ! end subroutine half_timestep_ADI
 
 
   subroutine Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
@@ -479,8 +438,6 @@ module mod_fld
 
     !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
-    ! print*, "Estimated ADI-ERROR", ADI_Error
-    ! print*, "LHS", "RHS", LHS(10,20), RHS(10,20)
   end subroutine Error_check_ADI
 
 
@@ -502,11 +459,6 @@ module mod_fld
     w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/frac_grid !4.d0
 
     E_m = E_new
-
-    ! ! print*, "m: ",w0*(w1/w0)**(((1:w_max))-one)/(w_max-one))
-    ! do m = 1,w_max
-    !   print*, "m: ",w0*(w1/w0)**((m-one)/(w_max-one)), w0, w1
-    ! enddo
 
     do m = 1,w_max
       E_n = E_old
@@ -862,7 +814,8 @@ module mod_fld
     bisect_a = zero
     bisect_b = min(abs(c0/c1),abs(c0)**(1.d0/4.d0))
 
-    do while (abs(bisect_b-bisect_a) .ge. fld_bisect_tol*min(e_gas,E_rad))
+    do while (abs(Polynomial_Bisection(bisect_b, c0, c1)-Polynomial_Bisection(bisect_a, c0, c1))&
+       .ge. fld_bisect_tol*min(e_gas,E_rad))
       bisect_c = (bisect_a + bisect_b)/two
 
       if (Polynomial_Bisection(bisect_a, c0, c1)*&
@@ -877,13 +830,10 @@ module mod_fld
         else
           call mpistop("Problem with fld bisection method")
         endif
-
       else
-
         bisect_a = e_gas
         bisect_b = e_gas
         print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
-
       endif
     enddo
 

@@ -90,7 +90,7 @@ subroutine initglobaldata_usr
   T_star0 = T_star/unit_temperature
   c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
 
-  kappa0 = 0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
+  kappa0 = fld_kappa0 !0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
   c_light0 = const_c/unit_velocity
   g0 = 6.67e-8*M_star/R_star**2&
   *(unit_density*unit_length/unit_pressure)
@@ -118,15 +118,16 @@ end subroutine initglobaldata_usr
     double precision :: density(ixG^S), pressure(ixG^S), pert(ixG^S), amplitude
     integer :: i
 
+    double precision                   :: fld_lambda(ix^S), fld_R(ix^S)
 
-    amplitude = zero !10.d-2
+    amplitude = zero
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
 
     do i=ixGmin2,ixGmax2
       pressure(:,i) = p_bound*exp(-x(:,i,2)/heff0)
-      density(:,i) = rho_bound*exp(-x(:,i,2)/heff0)
+      density(:,i) = pressure(:,i)/c_sound0**2 !rho_bound*exp(-x(:,i,2)/heff0)
     enddo
 
     ! Set initial values for w
@@ -160,10 +161,6 @@ end subroutine initglobaldata_usr
     print*, rho_bound*unit_density, p_bound*unit_pressure
     print*, "factor", 3.d0*Gamma/(one-Gamma)
 
-    ! do i=ixGmin2,ixGmax2
-    !   print*, x(5,i,2),w(5,i,rho_)*unit_density
-    ! enddo
-
   end subroutine initial_conditions
 
 !==========================================================================================
@@ -194,8 +191,6 @@ end subroutine initglobaldata_usr
       velocity(:,ixBmax2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
       velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
 
-      ! w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
-
       w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
       w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound
 
@@ -207,7 +202,6 @@ end subroutine initglobaldata_usr
     case default
       call mpistop("BC not specified")
     end select
-
   end subroutine special_bound
 
 
@@ -232,8 +226,13 @@ end subroutine initglobaldata_usr
       double precision, intent(in)    :: x(ixI^S,1:ndim)
       double precision :: pressure(ixI^S)
 
+
+
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
       w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
+
+
+
 
     end subroutine constant_e
 
@@ -270,17 +269,28 @@ end subroutine initglobaldata_usr
     double precision, intent(in)       :: x(ixI^S,1:ndim)
     double precision                   :: w(ixI^S,nw+nwauxio)
     double precision                   :: normconv(0:nw+nwauxio)
-    double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
+    double precision                   :: rad_flux(ixO^S,1:ndim), rad_pressure(ixO^S), fld_lambda(ixO^S), fld_R(ixO^S), fld_kappa(ixO^S)
+    double precision                   :: g_rad(ixI^S,1:ndim), big_gamma(ixI^S)
+    integer                            :: idim
 
     call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
     call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
     call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+    call set_opacity(w, x, ixI^L, ixO^L, fld_kappa)
 
-    w(ixO^S,nw+1)=rad_flux(ixO^S,1)/(unit_pressure*unit_velocity)
-    w(ixO^S,nw+2)=rad_flux(ixO^S,2)/(unit_pressure*unit_velocity)
-    w(ixO^S,nw+3)=rad_pressure(ixO^S)
+    do idim = 1,ndim
+      g_rad(ixO^S,idim) = fld_kappa(ixO^S)*rad_flux(ixO^S,idim)/c_light0
+    enddo
+    big_gamma(ixO^S) = g_rad(ixO^S,2)/(6.67e-8*M_star/R_star**2*(unit_time**2/unit_length))
+
+    w(ixO^S,nw+1)=rad_flux(ixO^S,1)*(unit_pressure*unit_velocity)
+    w(ixO^S,nw+2)=rad_flux(ixO^S,2)*(unit_pressure*unit_velocity)
+    w(ixO^S,nw+3)=rad_pressure(ixO^S)*unit_pressure
     w(ixO^S,nw+4)=fld_lambda(ixO^S)
     w(ixO^S,nw+5)=fld_R(ixO^S)
+    w(ixO^S,nw+6)=g_rad(ixO^S,1)*unit_length/(unit_time**2)
+    w(ixO^S,nw+7)=g_rad(ixO^S,2)*unit_length/(unit_time**2)
+    w(ixO^S,nw+8)=big_gamma(ixO^S)
 
   end subroutine specialvar_output
 
@@ -289,7 +299,7 @@ end subroutine initglobaldata_usr
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames = 'F1 F2 RP lam fld_R'
+    varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam'
 
   end subroutine specialvarnames_output
 

@@ -90,7 +90,7 @@ subroutine initglobaldata_usr
   T_star0 = T_star/unit_temperature
   c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
 
-  kappa0 = 0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
+  kappa0 = fld_kappa0 !0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
   c_light0 = const_c/unit_velocity
   g0 = 6.67e-8*M_star/R_star**2*(unit_density*unit_length/unit_pressure)
   geff0 = g0*(one - (kappa0*Flux0)/(c_light0*g0))
@@ -122,15 +122,17 @@ end subroutine initglobaldata_usr
        ixGmin2:ixGmax2), amplitude
     integer :: i
 
+    double precision                   :: fld_lambda(ixmin1:ixmax1,&
+       ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-    amplitude = zero !10.d-2
+    amplitude = zero
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
 
     do i=ixGmin2,ixGmax2
       pressure(:,i) = p_bound*exp(-x(:,i,2)/heff0)
-      density(:,i) = rho_bound*exp(-x(:,i,2)/heff0)
+      density(:,i) = pressure(:,i)/c_sound0**2 !rho_bound*exp(-x(:,i,2)/heff0)
     enddo
 
     ! Set initial values for w
@@ -171,10 +173,6 @@ end subroutine initglobaldata_usr
     print*, rho_bound*unit_density, p_bound*unit_pressure
     print*, "factor", 3.d0*Gamma/(one-Gamma)
 
-    ! do i=ixGmin2,ixGmax2
-    !   print*, x(5,i,2),w(5,i,rho_)*unit_density
-    ! enddo
-
   end subroutine initial_conditions
 
 !==========================================================================================
@@ -211,8 +209,6 @@ end subroutine initglobaldata_usr
       velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
          rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
 
-      ! w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
-
       w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
       w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound
 
@@ -224,7 +220,6 @@ end subroutine initglobaldata_usr
     case default
       call mpistop("BC not specified")
     end select
-
   end subroutine special_bound
 
 
@@ -253,10 +248,15 @@ end subroutine initglobaldata_usr
          1:ndim)
       double precision :: pressure(ixImin1:ixImax1,ixImin2:ixImax2)
 
+
+
       pressure(ixImin1:ixImax1,ixImin2:ixImax2) = w(ixImin1:ixImax1,&
          ixImin2:ixImax2,rho_)*c_sound0**2
       w(ixImin1:ixImax1,ixImin2:ixImax2, e_) = pressure(ixImin1:ixImax1,&
          ixImin2:ixImax2)/(hd_gamma - one)
+
+
+
 
     end subroutine constant_e
 
@@ -303,10 +303,13 @@ end subroutine initglobaldata_usr
     double precision                   :: w(ixImin1:ixImax1,ixImin2:ixImax2,&
        nw+nwauxio)
     double precision                   :: normconv(0:nw+nwauxio)
-    double precision                   :: rad_flux(ixImin1:ixImax1,&
-       ixImin2:ixImax2,1:ndim), rad_pressure(ixImin1:ixImax1,ixImin2:ixImax2),&
-        fld_lambda(ixImin1:ixImax1,ixImin2:ixImax2), fld_R(ixImin1:ixImax1,&
-       ixImin2:ixImax2)
+    double precision                   :: rad_flux(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,1:ndim), rad_pressure(ixOmin1:ixOmax1,ixOmin2:ixOmax2),&
+        fld_lambda(ixOmin1:ixOmax1,ixOmin2:ixOmax2), fld_R(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2), fld_kappa(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision                   :: g_rad(ixImin1:ixImax1,&
+       ixImin2:ixImax2,1:ndim), big_gamma(ixImin1:ixImax1,ixImin2:ixImax2)
+    integer                            :: idim
 
     call fld_get_radflux(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
        ixOmin2,ixOmax1,ixOmax2, rad_flux)
@@ -314,16 +317,33 @@ end subroutine initglobaldata_usr
        ixOmin2,ixOmax1,ixOmax2, rad_pressure)
     call fld_get_fluxlimiter(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,&
        ixOmin2,ixOmax1,ixOmax2, fld_lambda, fld_R)
+    call set_opacity(w, x, ixImin1,ixImin2,ixImax1,ixImax2, ixOmin1,ixOmin2,&
+       ixOmax1,ixOmax2, fld_kappa)
+
+    do idim = 1,ndim
+      g_rad(ixOmin1:ixOmax1,ixOmin2:ixOmax2,idim) = fld_kappa(ixOmin1:ixOmax1,&
+         ixOmin2:ixOmax2)*rad_flux(ixOmin1:ixOmax1,ixOmin2:ixOmax2,&
+         idim)/c_light0
+    enddo
+    big_gamma(ixOmin1:ixOmax1,ixOmin2:ixOmax2) = g_rad(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,2)/(6.67e-8*M_star/R_star**2*(unit_time**&
+       2/unit_length))
 
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+1)=rad_flux(ixOmin1:ixOmax1,&
-       ixOmin2:ixOmax2,1)/(unit_pressure*unit_velocity)
+       ixOmin2:ixOmax2,1)*(unit_pressure*unit_velocity)
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+2)=rad_flux(ixOmin1:ixOmax1,&
-       ixOmin2:ixOmax2,2)/(unit_pressure*unit_velocity)
+       ixOmin2:ixOmax2,2)*(unit_pressure*unit_velocity)
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+3)=rad_pressure(ixOmin1:ixOmax1,&
-       ixOmin2:ixOmax2)
+       ixOmin2:ixOmax2)*unit_pressure
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+4)=fld_lambda(ixOmin1:ixOmax1,&
        ixOmin2:ixOmax2)
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+5)=fld_R(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+6)=g_rad(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,1)*unit_length/(unit_time**2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+7)=g_rad(ixOmin1:ixOmax1,&
+       ixOmin2:ixOmax2,2)*unit_length/(unit_time**2)
+    w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+8)=big_gamma(ixOmin1:ixOmax1,&
        ixOmin2:ixOmax2)
 
   end subroutine specialvar_output
@@ -333,7 +353,7 @@ end subroutine initglobaldata_usr
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames = 'F1 F2 RP lam fld_R'
+    varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam'
 
   end subroutine specialvarnames_output
 

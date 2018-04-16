@@ -53,6 +53,8 @@ module mod_fld
     !> Use constant Opacity
     logical :: fld_const_opacity = .false.
 
+    logical :: fld_complete_diffusion_limit = .false.
+
     !> Boundary conditions for radiative Energy in ADI.
     character(len=8) :: fld_bound_min1 = 'periodic'
     character(len=8) :: fld_bound_max1 = 'periodic'
@@ -71,6 +73,7 @@ module mod_fld
     public :: fld_get_radflux
     public :: fld_get_radpress
     public :: fld_get_fluxlimiter
+    public :: set_opacity
 
   contains
 
@@ -82,7 +85,7 @@ module mod_fld
     namelist /fld_list/ fld_kappa0, fld_mu, fld_split, fld_maxdw, fld_Diffusion,&
     fld_Rad_force, fld_Energy_interact, fld_Energy_advect, fld_bisect_tol, fld_diff_testcase,&
     fld_bound_min1, fld_bound_max1, fld_bound_min2, fld_bound_max2, fld_adi_tol, fld_max_fracdt,&
-    fld_const_opacity
+    fld_const_opacity, fld_complete_diffusion_limit
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -205,6 +208,7 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision, intent(out):: fld_kappa(ixO^S)
     double precision :: temperature(ixI^S)
+    double precision :: rho0,n
 
     if (fld_const_opacity) then
        fld_kappa = fld_kappa0
@@ -212,9 +216,13 @@ module mod_fld
       !> Get pressure
       call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
       !> calc Temperature as p/rho
-      temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
+      !temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
 
-      fld_kappa =  fld_kappa0
+      n = 3.d0
+      if (it == 0) then
+        rho0 = 0.5d0*w(ixOmin1,ixImin2+1,iw_rho)
+      endif
+      fld_kappa(ixO^S) =  fld_kappa0*(w(ixO^S,iw_rho)/rho0)**n
     endif
   end subroutine set_opacity
 
@@ -232,20 +240,24 @@ module mod_fld
     double precision :: grad_r_e(ixO^S)
     integer :: idir
 
-    !> Calculate R everywhere
-    !> |grad E|/(rho kappa E)
-    normgrad2(ixO^S) = zero
-    do idir = 1,ndir
-      call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e)
-      normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S)**2
-    end do
+    if (fld_complete_diffusion_limit) then
+      fld_lambda = one/3.d0
+    else
+      !> Calculate R everywhere
+      !> |grad E|/(rho kappa E)
+      normgrad2(ixO^S) = zero
+      do idir = 1,ndir
+        call grad(w(ixI^S, iw_r_e),ixI^L,ixO^L,idir,x,grad_r_e)
+        normgrad2(ixO^S) = normgrad2(ixO^S) + grad_r_e(ixO^S)**2
+      end do
 
-    call set_opacity(w, x, ixI^L, ixO^L, fld_kappa)
-    fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)*w(ixO^S,r_e))
+      call set_opacity(w, x, ixI^L, ixO^L, fld_kappa)
+      fld_R(ixO^S) = dsqrt(normgrad2(ixO^S))/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)*w(ixO^S,r_e))
 
-    !> Calculate the flux limiter, lambda
-    !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
+      !> Calculate the flux limiter, lambda
+      !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
+      fld_lambda(ixO^S) = (2+fld_R(ixO^S))/(6+3*fld_R(ixO^S)+fld_R(ixO^S)**2)
+    endif
   end subroutine fld_get_fluxlimiter
 
 
@@ -283,6 +295,12 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    ! do idir = ixImin2+2,ixImax2-2
+    !   print*,grad_r_e(5,idir,2), w(5,idir, iw_r_e), rad_flux(5,idir,2),&
+    !    (w(5,idir+1, iw_r_e) - w(5,idir-1, iw_r_e))/(x(5,idir+1,2)-x(5,idir-1,2))
+    ! enddo
+    ! stop
   end subroutine fld_get_radflux
 
 
@@ -553,12 +571,20 @@ module mod_fld
 
       !> Extrapolate lambda to ghostcells
       !> Edges
-      do i = 0,nghostcells-1
-        D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
-        D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
-        D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
-        D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
-      end do
+      !> To calculate the diffusion coefficient at the ghostcells, copy lambda from grid, but use correct kappa and rho
+      ! do i = 0,nghostcells-1
+      !   D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
+      !   D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
+      !   D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
+      !   D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
+      ! end do
+
+      call Diff_boundary_conditions(ixI^L,ixO^L,D)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !^^^^ KAPPA NOT DEFINED AT GHOSTCELLS !!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       !> Corners
       do i = 0,nghostcells-1
@@ -754,8 +780,8 @@ module mod_fld
       E_m(:,ixImax2:ixOmax2+1) = E_m(:,ixOmin2+1:ixOmin2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
-      E_m(:,ixOmax2+1) = zero !2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
-      E_m(:,ixImax2) = zero !2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
+      E_m(:,ixOmax2+1) = 2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
+      E_m(:,ixImax2) = 2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
     case('fixed')
       E_m(:,ixImax2:ixOmax2+1) = w(:,ixImax2:ixOmax2+1,iw_r_e)
     case default
@@ -772,6 +798,78 @@ module mod_fld
       end do
     end do
   end subroutine ADI_boundary_conditions
+
+  subroutine Diff_boundary_conditions(ixI^L,ixO^L,D)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L,ixO^L
+    double precision, intent(inout) :: D(ixI^S)
+    double precision :: Dmn1(ixI^S),Dmx1(ixI^S),Dmn2(ixI^S),Dmx2(ixI^S)
+
+    select case (fld_bound_min1)
+    case('periodic')
+      D(ixImin1:ixOmin1-1,:) = D(ixOmax1-1:ixOmax1,:)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      D(ixOmin1-1,:) = 2.d0*D(ixOmin1,:) - D(ixOmin1+1,:)
+      D(ixImin1,:) = 2.d0*D(ixOmin1-1,:) - D(ixOmin1,:)
+    case('fixed')
+      if (it==0) then
+        Dmn1 = D
+      endif
+      D(ixImin1:ixOmin1-1,:) = Dmn1(ixImin1:ixOmin1-1,:)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    select case (fld_bound_max1)
+    case('periodic')
+      D(ixImax1:ixOmax1+1,:) = D(ixOmin1+1:ixOmin1,:)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      D(ixOmax1+1,:) = 2.d0*D(ixOmax1,:) - D(ixOmax1-1,:)
+      D(ixImax1,:) = 2.d0*D(ixOmax1+1,:) - D(ixOmax1,:)
+    case('fixed')
+      if (it==0) then
+        Dmx1 = D
+      endif
+      D(ixImax1:ixOmax1+1,:) = Dmx1(ixImax1:ixOmax1+1,:)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    select case (fld_bound_min2)
+    case('periodic')
+      D(:,ixImin2:ixOmin2-1) = D(:,ixOmax2-1:ixOmax2)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      D(:,ixOmin2-1) = 2.d0*D(:,ixOmin2) - D(:,ixOmin2+1)
+      D(:,ixImin2) = 2.d0*D(:,ixOmin2-1) - D(:,ixOmin2)
+    case('fixed')
+      if (it==0) then
+        Dmn2 = D
+      endif
+      D(:,ixImin2:ixOmin2-1) = Dmn2(:,ixImin2:ixOmin2-1)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+
+    select case (fld_bound_max2)
+    case('periodic')
+      D(:,ixImax2:ixOmax2+1) = D(:,ixOmin2+1:ixOmin2)
+    case('cont')
+      if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
+      D(:,ixOmax2+1) = 2.d0*D(:,ixOmax2) - D(:,ixOmax2-1)
+      D(:,ixImax2) = 2.d0*D(:,ixOmax2+1) - D(:,ixOmax2)
+    case('fixed')
+      if (it==0) then
+        Dmx2 = D
+      endif
+      D(:,ixImax2:ixOmax2+1) = Dmx2(:,ixImax2:ixOmax2+1)
+    case default
+      call mpistop("ADI boundary not defined")
+    end select
+  end subroutine Diff_boundary_conditions
 
 
   subroutine Energy_interaction(w, x, ixI^L, ixO^L)
@@ -932,7 +1030,9 @@ module mod_fld
     !-----------------------------------------------------------------------------
     jx^L=ixO^L+kr(idir,^D);
     hx^L=ixO^L-kr(idir,^D);
+
     gradq(ixO^S)=(q(jx^S)-q(hx^S))/(x(jx^S,idir)-x(hx^S,idir))
+
     select case (typeaxial)
     case('slab') ! nothing to do
     case('cylindrical')

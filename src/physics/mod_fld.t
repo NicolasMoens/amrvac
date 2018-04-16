@@ -189,11 +189,11 @@ module mod_fld
       endif
 
       !> Write energy to file
-      if (it == 0) open(1,file='energy_out0')
-      write(1,222) it,global_time,w(3,3,iw_e),w(3,3,iw_r_e)
-      if (it == it_max) close(1)
-      222 format(i8,3e15.5E3)
-      print*, it, w(3,3,iw_e),w(3,3,r_e)
+      ! if (it == 0) open(1,file='energy_out0')
+      ! write(1,222) it,global_time,w(3,3,iw_e),w(3,3,iw_r_e)
+      ! if (it == it_max) close(1)
+      ! 222 format(i8,3e15.5E3)
+      ! print*, it, w(3,3,iw_e),w(3,3,r_e)
 
     end if
   end subroutine fld_add_source
@@ -572,12 +572,12 @@ module mod_fld
       !> Extrapolate lambda to ghostcells
       !> Edges
       !> To calculate the diffusion coefficient at the ghostcells, copy lambda from grid, but use correct kappa and rho
-      ! do i = 0,nghostcells-1
-      !   D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
-      !   D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
-      !   D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
-      !   D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
-      ! end do
+      do i = 0,nghostcells-1
+        D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
+        D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
+        D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
+        D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
+      end do
 
       call Diff_boundary_conditions(ixI^L,ixO^L,D)
 
@@ -799,6 +799,7 @@ module mod_fld
     end do
   end subroutine ADI_boundary_conditions
 
+
   subroutine Diff_boundary_conditions(ixI^L,ixO^L,D)
     use mod_global_parameters
 
@@ -850,6 +851,8 @@ module mod_fld
         Dmn2 = D
       endif
       D(:,ixImin2:ixOmin2-1) = Dmn2(:,ixImin2:ixOmin2-1)
+      ! D(:,ixImin2+1) = Dmn2(:,ixOmin2)
+      ! D(:,ixImin2) = Dmn2(:,ixOmin2)
     case default
       call mpistop("ADI boundary not defined")
     end select
@@ -940,8 +943,6 @@ module mod_fld
 
     !> advance E_rad
     E_rad(ixO^S) = (a1*e_gas(ixO^S)**4.d0 + E_rad(ixO^S))/(one + a2 + a3)
-
-    print*, w(3,3,iw_r_e), E_rad(3,3)
 
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)

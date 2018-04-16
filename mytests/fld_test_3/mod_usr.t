@@ -120,7 +120,7 @@ end subroutine initglobaldata_usr
 
     double precision                   :: fld_lambda(ix^S), fld_R(ix^S)
 
-    amplitude = zero
+    amplitude = 1.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -231,9 +231,6 @@ end subroutine initglobaldata_usr
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
       w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
 
-
-
-
     end subroutine constant_e
 
   !==========================================================================================
@@ -247,7 +244,6 @@ end subroutine initglobaldata_usr
     double precision, intent(out)   :: gravity_field(ixI^S,ndim)
 
     gravity_field(ixI^S,1) = zero
-
     gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
 
   end subroutine set_gravitation_field
@@ -299,7 +295,7 @@ end subroutine initglobaldata_usr
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam'
+    varnames = 'F1 F2 RP lambda fld_R rad_a1 rad_a2 Gamma'
 
   end subroutine specialvarnames_output
 

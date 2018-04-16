@@ -90,7 +90,7 @@ subroutine initglobaldata_usr
   T_star0 = T_star/unit_temperature
   c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
 
-  kappa0 = fld_kappa0!0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
+  kappa0 = fld_kappa0 !0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
   c_light0 = const_c/unit_velocity
   g0 = 6.67e-8*M_star/R_star**2*(unit_density*unit_length/unit_pressure)
   geff0 = g0*(one - (kappa0*Flux0)/(c_light0*g0))
@@ -125,7 +125,7 @@ end subroutine initglobaldata_usr
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
        ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-    amplitude = 1.d-3
+    amplitude = zero
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -208,8 +208,6 @@ end subroutine initglobaldata_usr
          rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
       velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
          rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
-
-      ! w(:,ixBmax2, mom(2)) =  w(:,ixBmax2+1, mom(2))
 
       w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
       w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound

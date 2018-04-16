@@ -17,8 +17,8 @@
    itsave(1,2)     = 0
    !ditsave_dat     = 1
    !ditsave_log     = 1
-   dtsave_dat     = 2.d-4
-   dtsave_log     = 2.d-4
+   dtsave_dat     = 1.d-4
+   dtsave_log     = 1.d-4
 /
 
  &stoplist
@@ -51,14 +51,14 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 20
-   domain_nx2         = 80
-   block_nx1          = 20
-   block_nx2          = 80
-   xprobmin1       =  -7.d-4
-   xprobmax1       =  7.d-4
+   domain_nx1         = 40
+   domain_nx2         = 160
+   block_nx1          = 40
+   block_nx2          = 160
+   xprobmin1       =  -14.d-4
+   xprobmax1       =  14.d-4
    xprobmin2       =  0.0d0
-   xprobmax2       =  6.d-3
+   xprobmax2       =  12.d-3
    iprob=1
    refine_threshold   = 20*0.5d0
    derefine_ratio     = 20*1.d0/2.d0

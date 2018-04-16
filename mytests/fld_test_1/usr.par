@@ -23,7 +23,7 @@
  &stoplist
    !time_max = 2.0d-3
    dtmin = 1.0d-20
-   it_max = 100000
+   it_max = 1000
 /
 
  &methodlist
@@ -60,8 +60,8 @@
  /
 
  &paramlist
-  !courantpar       = 0.6d0
-  dtpar = 1.d10
+  courantpar       = 0.6d0
+  !dtpar = 1.d-2
  /
 
  &hd_list
@@ -71,13 +71,14 @@
  /
 
  &fld_list
- fld_kappa = 0.34d0
+ fld_kappa0 = 0.34d0
  fld_mu = 0.6d0
  fld_split = .false.
  fld_maxdw = 2000
- fld_bisect_tol = 1.d-2
+ fld_bisect_tol = 1.d-35
  fld_adi_tol = 15.d-1
  fld_diff_testcase = .true.
+ fld_const_opacity = .true.
  fld_Diffusion = .false.
  fld_Rad_force = .false.
  fld_Energy_interact = .true.

@@ -185,11 +185,12 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      ! !> Write energy to file
-      ! if (it == 0) open(1,file='energy_out0')
-      ! write(1,222) it,global_time,w(4,4,iw_e)
-      ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
+      !> Write energy to file
+      if (it == 0) open(1,file='energy_out0')
+      write(1,222) it,global_time,w(3,3,iw_e),w(3,3,iw_r_e)
+      if (it == it_max) close(1)
+      222 format(i8,3e15.5E3)
+      print*, it, w(3,3,iw_e),w(3,3,r_e)
 
     end if
   end subroutine fld_add_source
@@ -841,6 +842,8 @@ module mod_fld
 
     !> advance E_rad
     E_rad(ixO^S) = (a1*e_gas(ixO^S)**4.d0 + E_rad(ixO^S))/(one + a2 + a3)
+
+    print*, w(3,3,iw_r_e), E_rad(3,3)
 
     !> Update rad-energy in w
     w(ixO^S,iw_r_e) = E_rad(ixO^S)

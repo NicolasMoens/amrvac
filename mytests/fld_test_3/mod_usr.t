@@ -120,7 +120,7 @@ end subroutine initglobaldata_usr
 
     double precision                   :: fld_lambda(ix^S), fld_R(ix^S)
 
-    amplitude = zero
+    amplitude = 3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -180,6 +180,8 @@ end subroutine initglobaldata_usr
     double precision, intent(in) :: qt, x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
     double precision :: velocity(ixG^S,1:ndir), pressure(ixG^S)
+    double precision :: ah2(1:nw), bh(1:nw), c(1:nw)
+    integer :: i
 
     select case (iB)
 
@@ -200,6 +202,29 @@ end subroutine initglobaldata_usr
 
       w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
       w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound
+
+    case(4)
+
+      !> Do quadratic interpolation
+      do i = ixGmin1,ixGmax1
+        ah2(:) = 0.5d0*w(i,ixGmax2-2, :) - w(i,ixGmax2-3, :) - 0.5d0*w(i,ixGmax2-4, :)
+        bh(:)  = -3.5d0*w(i,ixGmax2-2, :) + 6.d0*w(i,ixGmax2-3, :) - 2.5d0*w(i,ixGmax2-4, :)
+        c(:)   = 6.d0*w(i,ixGmax2-2, :) - 8.d0*w(i,ixGmax2-3, :) + 3d0*w(i,ixGmax2-4, :)
+
+        w(i,ixGmax2-1, :) = ah2(:) + bh(:) + c(:)
+        w(i,ixGmax2, :) = c(:)
+      enddo
+
+      w(:,ixBmin2, :) = 2*w(:,ixBmin2-1, :) - w(:,ixBmin2-2, :)
+      w(:,ixBmax2, :) = 2*w(:,ixBmax2-1, :) - w(:,ixBmax2-2, :)
+
+
+      ! w(:,ixBmin2, mom(1)) = zero
+      ! w(:,ixBmin2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
+      ! w(:,ixBmin2, e_) = p_bound/(hd_gamma-one)
+      ! w(:,ixBmin2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmax2,2)/heff0)
+
+      ! w(:,ixBmin2,:) =  w(:,ixBmax2,:)
 
     case default
       call mpistop("BC not specified")
@@ -272,13 +297,14 @@ end subroutine initglobaldata_usr
     double precision                   :: w(ixI^S,nw+nwauxio)
     double precision                   :: normconv(0:nw+nwauxio)
     double precision                   :: rad_flux(ixO^S,1:ndim), rad_pressure(ixO^S), fld_lambda(ixO^S), fld_R(ixO^S), fld_kappa(ixO^S)
-    double precision                   :: g_rad(ixI^S,1:ndim), big_gamma(ixI^S)
+    double precision                   :: g_rad(ixI^S,1:ndim), big_gamma(ixI^S), D(ixI^S,1:ndim)
     integer                            :: idim
 
     call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
     call fld_get_radpress(w, x, ixI^L, ixO^L, rad_pressure)
     call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
-    call set_opacity(w, x, ixI^L, ixO^L, fld_kappa)
+    call fld_get_opacity(w, x, ixI^L, ixO^L, fld_kappa)
+    call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
 
     do idim = 1,ndim
       g_rad(ixO^S,idim) = fld_kappa(ixO^S)*rad_flux(ixO^S,idim)/c_light0
@@ -293,6 +319,8 @@ end subroutine initglobaldata_usr
     w(ixO^S,nw+6)=g_rad(ixO^S,1)*unit_length/(unit_time**2)
     w(ixO^S,nw+7)=g_rad(ixO^S,2)*unit_length/(unit_time**2)
     w(ixO^S,nw+8)=big_gamma(ixO^S)
+    w(ixO^S,nw+9)=D(ixO^S,1)
+    w(ixO^S,nw+10)=D(ixO^S,2)
 
   end subroutine specialvar_output
 
@@ -301,7 +329,7 @@ end subroutine initglobaldata_usr
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam'
+    varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam D1 D2'
 
   end subroutine specialvarnames_output
 

@@ -457,11 +457,11 @@ contains
     !call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
 
     !> NICOLAS MOENS
-    !if (hd_fld) then
-    !  call fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound)
-    !else
+    if (hd_fld) then
+     call fld_get_csound2(w,x,ixI^L,ixO^L,hd_gamma,csound)
+    else
       call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
-    !end if
+    end if
 
     csound(ixO^S) = sqrt(csound(ixO^S))
 

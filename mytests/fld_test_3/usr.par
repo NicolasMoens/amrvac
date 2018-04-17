@@ -9,7 +9,7 @@
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = T
-  nwauxio = 8
+  nwauxio = 10
 /
 
  &savelist
@@ -17,8 +17,8 @@
    itsave(1,2)     = 0
    !ditsave_dat     = 1
    !ditsave_log     = 1
-   dtsave_dat     = 1.d-4
-   dtsave_log     = 1.d-4
+   dtsave_dat     = 2.d-5
+   dtsave_log     = 2.d-5
 /
 
  &stoplist
@@ -44,7 +44,7 @@
   typeboundary_min1 = 5*'periodic'
   typeboundary_max1 = 5*'periodic'
   typeboundary_min2 = 5*'special'
-  typeboundary_max2 = 5*'noinflow'
+  typeboundary_max2 = 4*'noinflow', 'special'
   typeghostfill= 'copy'
   internalboundary = T
 /
@@ -65,8 +65,8 @@
  /
 
  &paramlist
-  !courantpar       = 0.6d0
-  dtpar = 1d-5
+  courantpar       = 0.6d0
+  !dtpar = 1d-5
  /
 
  &hd_list

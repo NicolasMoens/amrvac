@@ -287,7 +287,11 @@ module mod_fld
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
+    if (fld_complete_diffusion_limit) then
+      fld_lambda = one/3.d0
+    else
+      fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
+    endif
 
     !> Calculate the Flux using the fld closure relation
     !> F = -c*lambda/(kappa*rho) *grad E
@@ -331,7 +335,11 @@ module mod_fld
 
     !> Calculate the flux limiter, lambda
     !> Levermore and Pomraning: lambda = (2 + R)/(6 + 3R + R^2)
-    fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
+    if (fld_complete_diffusion_limit) then
+      fld_lambda = one/3.d0
+    else
+      fld_lambda(ixO^S) = (two+fld_R(ixO^S))/(6.d0+3.d0*fld_R(ixO^S)+fld_R(ixO^S)**two)
+    endif
 
     !> Calculate radiation pressure
     !> P = (lambda + lambda^2 R^2)*E
@@ -571,14 +579,14 @@ module mod_fld
       !> Extrapolate lambda to ghostcells
       !> Edges
       !> To calculate the diffusion coefficient at the ghostcells, copy lambda from grid, but use correct kappa and rho
-      ! do i = 0,nghostcells-1
-      !   D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
-      !   D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
-      !   D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
-      !   D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
-      ! end do
+      do i = 0,nghostcells-1
+        D_center(ixImin1+i,:) = D_center(ixImin1+nghostcells,:)
+        D_center(ixImax1-i,:) = D_center(ixImax1-nghostcells,:)
+        D_center(:,ixImin2+i) = D_center(:,ixImin2+nghostcells)
+        D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
+      end do
 
-      call Diff_boundary_conditions(ixI^L,ixO^L,D)
+      !call Diff_boundary_conditions(ixI^L,ixO^L,D)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

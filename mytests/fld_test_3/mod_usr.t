@@ -77,7 +77,7 @@ contains
 
   end subroutine usr_init
 
-!========================== ================================================================
+!==========================================================================================
 
 subroutine initglobaldata_usr
   use mod_global_parameters
@@ -127,7 +127,7 @@ end subroutine initglobaldata_usr
 
     do i=ixGmin2,ixGmax2
       pressure(:,i) = p_bound*exp(-x(:,i,2)/heff0)
-      density(:,i) = pressure(:,i)/c_sound0**2 !rho_bound*exp(-x(:,i,2)/heff0)
+      density(:,i) = rho_bound*exp(-x(:,i,2)/heff0) !pressure(:,i)/c_sound0**2
     enddo
 
     ! Set initial values for w
@@ -192,9 +192,11 @@ end subroutine initglobaldata_usr
       velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
 
       w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
-      w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound
 
       w(:,ixBmin2,:) =  w(:,ixBmax2,:)
+
+      w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmax2,2)/heff0)
+      w(:,ixBmin2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmin2,2)/heff0)
 
       w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
       w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound

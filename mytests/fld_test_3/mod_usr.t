@@ -253,13 +253,8 @@ end subroutine initglobaldata_usr
       double precision, intent(in)    :: x(ixI^S,1:ndim)
       double precision :: pressure(ixI^S)
 
-
-
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
       w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
-
-
-
 
     end subroutine constant_e
 

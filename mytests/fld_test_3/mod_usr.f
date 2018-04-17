@@ -125,7 +125,7 @@ end subroutine initglobaldata_usr
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
        ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-    amplitude = 3.d-2
+    amplitude = zero !3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -280,15 +280,10 @@ end subroutine initglobaldata_usr
          1:ndim)
       double precision :: pressure(ixImin1:ixImax1,ixImin2:ixImax2)
 
-
-
       pressure(ixImin1:ixImax1,ixImin2:ixImax2) = w(ixImin1:ixImax1,&
          ixImin2:ixImax2,rho_)*c_sound0**2
       w(ixImin1:ixImax1,ixImin2:ixImax2, e_) = pressure(ixImin1:ixImax1,&
          ixImin2:ixImax2)/(hd_gamma - one)
-
-
-
 
     end subroutine constant_e
 

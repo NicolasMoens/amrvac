@@ -161,7 +161,7 @@ module mod_fld
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
-      
+
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
@@ -209,18 +209,22 @@ module mod_fld
     double precision :: temperature(ixI^S)
     double precision :: rho0,n
 
+    integer :: i
+
     if (fld_const_opacity) then
        fld_kappa = fld_kappa0
     else
       !> Get pressure
-      call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
+      !call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
       !> calc Temperature as p/rho
       !temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
 
-      n = 3.d0
-      if (it == 0) then
-        rho0 = 0.5d0*w(ixOmin1,ixImin2+1,iw_rho)
-      endif
+      ! if (it == 0) then
+      !   rho0 = 0.5d0*w(ixOmin1,ixImin2,iw_rho)
+      ! endif
+
+      rho0 = 0.48673604593233560
+      n = 1.d0-1
       fld_kappa(ixO^S) =  fld_kappa0*(w(ixO^S,iw_rho)/rho0)**n
     endif
   end subroutine fld_get_opacity
@@ -298,12 +302,6 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
-
-    ! do idir = ixImin2,ixImax2
-    !   print*, grad_r_e(5,idir,2), w(5,idir, iw_rho), fld_lambda(5,idir),&
-    !    fld_lambda(5,idir)/(fld_kappa(5,idir)*w(5,idir, iw_rho))*grad_r_e(5,idir,2), rad_flux(5,idir,2)
-    ! enddo
-    ! ! stop
   end subroutine fld_get_radflux
 
 

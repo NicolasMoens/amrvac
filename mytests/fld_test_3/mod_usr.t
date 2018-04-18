@@ -269,7 +269,6 @@ end subroutine initglobaldata_usr
     double precision, intent(out)   :: gravity_field(ixI^S,ndim)
 
     gravity_field(ixI^S,1) = zero
-
     gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
 
   end subroutine set_gravitation_field

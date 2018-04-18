@@ -188,11 +188,12 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      ! !> Write energy to file
+      !> Write energy to file
       ! if (it == 0) open(1,file='energy_out0')
-      ! write(1,222) it,global_time,w(4,4,iw_e)
+      ! write(1,222) it,global_time,w(3,3,iw_e),w(3,3,iw_r_e)
       ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
+      ! 222 format(i8,3e15.5E3)
+      ! print*, it, w(3,3,iw_e),w(3,3,r_e)
 
     end if
   end subroutine fld_add_source
@@ -799,6 +800,7 @@ module mod_fld
     end do
   end subroutine ADI_boundary_conditions
 
+
   subroutine Diff_boundary_conditions(ixI^L,ixO^L,D)
     use mod_global_parameters
 
@@ -850,6 +852,8 @@ module mod_fld
         Dmn2 = D
       endif
       D(:,ixImin2:ixOmin2-1) = Dmn2(:,ixImin2:ixOmin2-1)
+      ! D(:,ixImin2+1) = Dmn2(:,ixOmin2)
+      ! D(:,ixImin2) = Dmn2(:,ixOmin2)
     case default
       call mpistop("ADI boundary not defined")
     end select

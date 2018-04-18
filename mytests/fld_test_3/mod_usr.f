@@ -125,7 +125,7 @@ end subroutine initglobaldata_usr
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
        ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-    amplitude = zero !3.d-2
+    amplitude = 3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound

@@ -125,18 +125,14 @@ end subroutine initglobaldata_usr
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
        ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-<<<<<<< HEAD
-    amplitude = 3.d-2
-=======
-    amplitude = 1.d-2
->>>>>>> ef275640d2d4291cc3e01563e09933b31ba115dd
+    amplitude = zero !3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
 
     do i=ixGmin2,ixGmax2
-      pressure(:,i) = p_bound*exp(-x(:,i,2)/heff0)
-      density(:,i) = rho_bound*exp(-x(:,i,2)/heff0) !pressure(:,i)/c_sound0**2
+      pressure(:,i) = p_bound*dexp(-x(:,i,2)/heff0)
+      density(:,i) = pressure(:,i)/c_sound0**2 !rho_bound*dexp(-x(:,i,2)/heff0) !
     enddo
 
     ! Set initial values for w
@@ -200,7 +196,7 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,1:nw)
     double precision :: velocity(ixGmin1:ixGmax1,ixGmin2:ixGmax2,1:ndir),&
         pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2)
-    double precision :: ah2(1:nw), bh(1:nw), c(1:nw)
+    double precision :: a(1:nw), b(1:nw), c(1:nw)
     integer :: i
 
     select case (iB)
@@ -229,29 +225,59 @@ end subroutine initglobaldata_usr
 
     case(4)
 
-      !> Do quadratic interpolation
-      do i = ixGmin1,ixGmax1
-        ah2(:) = 0.5d0*w(i,ixGmax2-2, :) - w(i,ixGmax2-3, :) - 0.5d0*w(i,&
-           ixGmax2-4, :)
-        bh(:)  = -3.5d0*w(i,ixGmax2-2, :) + 6.d0*w(i,ixGmax2-3, :) - 2.5d0*w(i,&
-           ixGmax2-4, :)
-        c(:)   = 6.d0*w(i,ixGmax2-2, :) - 8.d0*w(i,ixGmax2-3, :) + 3d0*w(i,&
-           ixGmax2-4, :)
+      ! !> Do quadratic interpolation
+      ! do i = ixGmin1,ixGmax1
+      !   a(:) = 0.5d0*w(i,ixGmax2-2, :) - w(i,ixGmax2-3, :) - 0.5d0*w(i,ixGmax2-4, :)
+      !   b(:)  = -3.5d0*w(i,ixGmax2-2, :) + 6.d0*w(i,ixGmax2-3, :) - 2.5d0*w(i,ixGmax2-4, :)
+      !   c(:)   = 6.d0*w(i,ixGmax2-2, :) - 8.d0*w(i,ixGmax2-3, :) + 3d0*w(i,ixGmax2-4, :)
+      !
+      !   w(i,ixGmax2-1, :) = a(:) + b(:) + c(:)
+      !   w(i,ixGmax2, :) = c(:)
+      ! enddo
+      ! w(:,ixBmin2, :) = 2*w(:,ixBmin2-1, :) - w(:,ixBmin2-2, :)
+      ! w(:,ixBmax2, :) = 2*w(:,ixBmax2-1, :) - w(:,ixBmax2-2, :)
 
-        w(i,ixGmax2-1, :) = ah2(:) + bh(:) + c(:)
-        w(i,ixGmax2, :) = c(:)
+
+      ! !> loglineair interpolation
+      ! do i = ixGmin1,ixGmax1
+      !   b(:) = dlog(w(i,ixGmax2-3,:)/w(i,ixGmax2-2,:))/dlog(x(i,ixGmax2-3,2)/x(i,ixGmax2-2,2))
+      !   a(:)  = w(i,ixGmax2-2,:)*x(i,ixGmax2-2,2)**(-b(:))
+      !
+      !   !> Density
+      !   w(i,ixGmax2-1, rho_) = a(rho_)*x(i,ixGmax2-1,2)**b(rho_)
+      !   w(i,ixGmax2, rho_) = a(rho_)*x(i,ixGmax2,2)**b(rho_)
+      !
+      !   !> Gas Energy
+      !   w(i,ixGmax2-1, e_) = a(e_)*x(i,ixGmax2-1,2)**b(e_)
+      !   w(i,ixGmax2, e_) = a(e_)*x(i,ixGmax2,2)**b(e_)
+      !
+      !   !> Radiation Energy
+      !   w(i,ixGmax2-1, r_e) = max(a(r_e)*x(i,ixGmax2-1,2)**b(r_e),zero)
+      !   w(i,ixGmax2, r_e) = max(a(r_e)*x(i,ixGmax2,2)**b(r_e),zero)
+      ! enddo
+
+      !> exponential interpolation
+      do i = ixGmin1,ixGmax1
+        b(:) = dlog(w(i,ixGmax2-2,:)/w(i,ixGmax2-3,:))*(x(i,ixGmax2-2,2)/x(i,&
+           ixGmax2-3,2))
+        a(:)  = w(i,ixGmax2-2,:)*dexp(x(i,ixGmax2-2,2)*(-b(:)))
+
+        !> Density
+        w(i,ixGmax2-1, rho_) = a(rho_)*dexp(-x(i,ixGmax2-1,2)*b(rho_))
+        w(i,ixGmax2, rho_) = a(rho_)*dexp(-x(i,ixGmax2,2)*b(rho_))
+
+        !> Gas Energy
+        w(i,ixGmax2-1, e_) = a(e_)*dexp(-x(i,ixGmax2-1,2)*b(e_))
+        w(i,ixGmax2, e_) = a(e_)*dexp(-x(i,ixGmax2,2)*b(e_))
+
+        !> Radiation Energy
+        w(i,ixGmax2-1, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2-1,2)*b(r_e)),zero)
+        w(i,ixGmax2, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2,2)*b(r_e)),zero)
+
+        !print*, w(i,ixGmax2-1, r_e), w(i,ixGmax2, r_e)
       enddo
 
-      w(:,ixBmin2, :) = 2*w(:,ixBmin2-1, :) - w(:,ixBmin2-2, :)
-      w(:,ixBmax2, :) = 2*w(:,ixBmax2-1, :) - w(:,ixBmax2-2, :)
 
-
-      ! w(:,ixBmin2, mom(1)) = zero
-      ! w(:,ixBmin2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
-      ! w(:,ixBmin2, e_) = p_bound/(hd_gamma-one)
-      ! w(:,ixBmin2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmax2,2)/heff0)
-
-      ! w(:,ixBmin2,:) =  w(:,ixBmax2,:)
 
     case default
       call mpistop("BC not specified")
@@ -390,11 +416,7 @@ end subroutine initglobaldata_usr
     use mod_global_parameters
     character(len=*) :: varnames
 
-<<<<<<< HEAD
     varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam D1 D2'
-=======
-    varnames = 'F1 F2 RP lambda fld_R rad_a1 rad_a2 Gamma'
->>>>>>> ef275640d2d4291cc3e01563e09933b31ba115dd
 
   end subroutine specialvarnames_output
 

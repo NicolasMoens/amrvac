@@ -220,10 +220,6 @@ module mod_fld
       !> calc Temperature as p/rho
       !temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
 
-      ! if (it == 0) then
-      !   rho0 = 0.5d0*w(ixOmin1,ixImin2,iw_rho)
-      ! endif
-
       rho0 = 0.48673604593233560
       n = 1.d0-1
       fld_kappa(ixO^S) =  fld_kappa0*(w(ixO^S,iw_rho)/rho0)**n
@@ -303,6 +299,12 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!! THIS IS SJOEMELY !!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   end subroutine fld_get_radflux
 
 
@@ -608,6 +610,11 @@ module mod_fld
       D(:,ixImin2,1) = D_center(:,ixImin2)
       D(ixImin1,:,2) = D_center(ixImin1,:)
       D(:,ixImin2,2) = D_center(:,ixImin2)
+
+      ! D(:,ixImax2-2,:) = D(:,ixImax2-3,:)
+      ! D(:,ixImax2-1,:) = D(:,ixImax2-2,:)
+      ! D(:,ixImax2,:) = D(:,ixImax2-1,:)
+
     endif
   end subroutine fld_get_diffcoef
 

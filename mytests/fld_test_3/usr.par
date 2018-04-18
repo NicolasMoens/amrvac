@@ -84,7 +84,7 @@
   fld_bisect_tol = 1.d-3
   fld_adi_tol = 15.d-1
   fld_max_fracdt = 100.d0
-  fld_diff_testcase = .true.
+  fld_diff_testcase = .false.
   fld_const_opacity = .true.
   fld_complete_diffusion_limit = .false.
   fld_bound_min1 = 'periodic'

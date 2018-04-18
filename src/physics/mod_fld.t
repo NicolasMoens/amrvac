@@ -300,11 +300,10 @@ module mod_fld
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
 
-    rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
+    !rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!!!!!! THIS IS SJOEMELY !!!!!!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
   end subroutine fld_get_radflux
 
 
@@ -611,9 +610,7 @@ module mod_fld
       D(ixImin1,:,2) = D_center(ixImin1,:)
       D(:,ixImin2,2) = D_center(:,ixImin2)
 
-      ! D(:,ixImax2-2,:) = D(:,ixImax2-3,:)
-      ! D(:,ixImax2-1,:) = D(:,ixImax2-2,:)
-      ! D(:,ixImax2,:) = D(:,ixImax2-1,:)
+      !D(:,ixImax2-2,:) = D(:,ixImax2-3,:)
 
     endif
   end subroutine fld_get_diffcoef

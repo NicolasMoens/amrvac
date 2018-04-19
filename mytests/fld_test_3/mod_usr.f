@@ -125,7 +125,7 @@ end subroutine initglobaldata_usr
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
        ixmin2:ixmax2), fld_R(ixmin1:ixmax1,ixmin2:ixmax2)
 
-    amplitude = zero !3.d-2
+    amplitude = 3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -143,13 +143,10 @@ end subroutine initglobaldata_usr
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)/(hd_gamma - one)*(one + amplitude*pert(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
     call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
-       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2))
+       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
 
     !w(ixG^S,r_e) = w(ixG^S,r_e)*(one + dsin(x(ixG^S,1)))
 
@@ -203,25 +200,15 @@ end subroutine initglobaldata_usr
 
     case(3)
 
-      w(:,ixBmax2, rho_) = rho_bound
-      w(:,ixBmax2, mom(1)) = zero
-
-      velocity(:,ixBmax2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
-         rho_) - w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
-      velocity(:,ixBmin2,2) = 2*(w(:,ixBmax2+1,mom(2))/w(:,ixBmax2+1,&
-         rho_) - 2*w(:,ixBmax2+2,mom(2))/w(:,ixBmax2+2,rho_))
-
-      w(:,ixBmax2, e_) = p_bound/(hd_gamma-one)
-
-      w(:,ixBmin2,:) =  w(:,ixBmax2,:)
-
-      w(:,ixBmax2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmax2,&
-         2)/heff0)
-      w(:,ixBmin2, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,ixBmin2,&
-         2)/heff0)
-
-      w(:,ixBmax2, mom(2)) = velocity(:,ixBmax2,2)*rho_bound
-      w(:,ixBmin2, mom(2)) = velocity(:,ixBmin2,2)*rho_bound
+      do i = ixBmin2,ixBmax2
+        w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
+        w(:,i, mom(1)) = zero
+        velocity(:,i,2) = 2*(w(:,i+1,mom(2))/w(:,i+1,rho_) - w(:,i+2,&
+           mom(2))/w(:,i+2,rho_))
+        w(:,i, mom(2)) = velocity(:,i,2)*w(:,i, rho_)
+        w(:,i, e_) = p_bound*dexp(-x(:,i,2)/heff0)/(hd_gamma-one)
+        w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,i,2)/heff0)
+      enddo
 
     case(4)
 
@@ -273,11 +260,7 @@ end subroutine initglobaldata_usr
         !> Radiation Energy
         w(i,ixGmax2-1, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2-1,2)*b(r_e)),zero)
         w(i,ixGmax2, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2,2)*b(r_e)),zero)
-
-        !print*, w(i,ixGmax2-1, r_e), w(i,ixGmax2, r_e)
       enddo
-
-
 
     case default
       call mpistop("BC not specified")

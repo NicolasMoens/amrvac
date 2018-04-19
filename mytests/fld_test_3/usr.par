@@ -17,12 +17,12 @@
    itsave(1,2)     = 0
    !ditsave_dat     = 1
    !ditsave_log     = 1
-   dtsave_dat     = 2.d-3 !2.d-4
-   dtsave_log     = 2.d-3 !2.d-4
+   dtsave_dat     = 2.d-4
+   dtsave_log     = 2.d-4
 /
 
  &stoplist
-   time_max = 2.d-1 !2.d-2
+   time_max = 2.d-2
    dtmin = 1.0d-20
    !it_max = 100
 /
@@ -51,10 +51,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 20
-   domain_nx2         = 80
-   block_nx1          = 20
-   block_nx2          = 80
+   domain_nx1         = 40
+   domain_nx2         = 160
+   block_nx1          = 40
+   block_nx2          = 160
    xprobmin1       =  0 !-7.d-4
    xprobmax1       =  7.d-4
    xprobmin2       =  0.0d0
@@ -82,7 +82,7 @@
   fld_split = .false.
   fld_maxdw = 2000
   fld_bisect_tol = 1.d-3
-  fld_adi_tol = 15.d-1
+  fld_adi_tol = 1.d-3
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.
   fld_const_opacity = .true.

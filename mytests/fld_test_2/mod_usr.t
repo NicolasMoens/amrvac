@@ -97,7 +97,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + 1.569034853d0**(-8.d0 *dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
+      e0(i,j) =  two + dexp(-8.d0 *dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
       enddo
     enddo
 

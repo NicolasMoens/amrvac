@@ -116,6 +116,7 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixG^S, ndim)
     double precision, intent(inout) :: w(ixG^S, nw)
     double precision :: density(ixG^S), pressure(ixG^S), pert(ixG^S), amplitude
+    double precision :: Gamma_dep(ix^S), fld_kappa(ix^S)
     integer :: i
 
     double precision                   :: fld_lambda(ix^S), fld_R(ix^S)
@@ -134,10 +135,13 @@ end subroutine initglobaldata_usr
     call RANDOM_NUMBER(pert)
     w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
     w(ixG^S, mom(:)) = zero
-    call RANDOM_NUMBER(pert)
-    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)!*(one + amplitude*pert(ixG^S))
-    call RANDOM_NUMBER(pert)
-    w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S)!*(one + amplitude*pert(ixG^S))
+    w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)
+
+    call fld_get_opacity(w,x,ixG^L,ix^L,fld_kappa)
+
+    Gamma_dep = (fld_kappa*Flux0)/(c_light0*g0)
+
+    w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
 
     !w(ixG^S,r_e) = w(ixG^S,r_e)*(one + dsin(x(ixG^S,1)))
 
@@ -189,6 +193,10 @@ end subroutine initglobaldata_usr
     select case (iB)
 
     case(3)
+
+      call fld_get_fluxlimiter(w, x, ixG^L, ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_lambda, fld_R)
+      call fld_get_opacity(w, x, ixG^L, ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_kappa)
+
 
       do i = ixBmin2,ixBmax2
         w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
@@ -272,13 +280,11 @@ end subroutine initglobaldata_usr
          enddo
       enddo
 
-      ! print*," asdfafsfgvs"
-      !
-      ! do i = ixGmin2, ixGmax2
-      !   print*,  fld_kappa(5,i)/(unit_time*unit_velocity*unit_density)
-      ! enddo
-      !
-      ! stop
+      print*," asdfafsfgvs"
+
+      do i = ixGmin2, ixGmax2
+        print*,  fld_kappa(5,i)/(unit_time*unit_velocity*unit_density)
+      enddo
 
     case default
       call mpistop("BC not specified")

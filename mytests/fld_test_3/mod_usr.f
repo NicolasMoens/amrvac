@@ -120,6 +120,8 @@ end subroutine initglobaldata_usr
     double precision :: density(ixGmin1:ixGmax1,ixGmin2:ixGmax2),&
         pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2), pert(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2), amplitude
+    double precision :: Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2),&
+        fld_kappa(ixmin1:ixmax1,ixmin2:ixmax2)
     integer :: i
 
     double precision                   :: fld_lambda(ixmin1:ixmax1,&
@@ -141,12 +143,17 @@ end subroutine initglobaldata_usr
        ixGmin2:ixGmax2)*(one + amplitude*pert(ixGmin1:ixGmax1,&
        ixGmin2:ixGmax2))
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-    call RANDOM_NUMBER(pert)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
-       ixGmin2:ixGmax2)/(hd_gamma - one) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
-    call RANDOM_NUMBER(pert)
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
-       3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2) !*(one + amplitude*pert(ixGmin1:ixGmax1,ixGmin2:ixGmax2))
+       ixGmin2:ixGmax2)/(hd_gamma - one)
+
+    call fld_get_opacity(w,x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixmin1,ixmin2,&
+       ixmax1,ixmax2,fld_kappa)
+
+    Gamma_dep = (fld_kappa*Flux0)/(c_light0*g0)
+
+    w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 3.d0*Gamma_dep(ixmin1:ixmax1,&
+       ixmin2:ixmax2)/(one-Gamma_dep(ixmin1:ixmax1,&
+       ixmin2:ixmax2))*pressure(ixmin1:ixmax1,ixmin2:ixmax2)
 
     !w(ixG^S,r_e) = w(ixG^S,r_e)*(one + dsin(x(ixG^S,1)))
 
@@ -202,6 +209,12 @@ end subroutine initglobaldata_usr
     select case (iB)
 
     case(3)
+
+      call fld_get_fluxlimiter(w, x, ixGmin1,ixGmin2,ixGmax1,ixGmax2,&
+          ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_lambda, fld_R)
+      call fld_get_opacity(w, x, ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixGmin1+2,&
+         ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_kappa)
+
 
       do i = ixBmin2,ixBmax2
         w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
@@ -288,13 +301,11 @@ end subroutine initglobaldata_usr
          enddo
       enddo
 
-      ! print*," asdfafsfgvs"
-      !
-      ! do i = ixGmin2, ixGmax2
-      !   print*,  fld_kappa(5,i)/(unit_time*unit_velocity*unit_density)
-      ! enddo
-      !
-      ! stop
+      print*," asdfafsfgvs"
+
+      do i = ixGmin2, ixGmax2
+        print*,  fld_kappa(5,i)/(unit_time*unit_velocity*unit_density)
+      enddo
 
     case default
       call mpistop("BC not specified")

@@ -29,8 +29,8 @@
 
  &methodlist
    time_integrator = 'onestep'
-   flux_scheme     = 20*'hll'
-   limiter         = 20*'koren'
+   flux_scheme     = 20*'tvdlf' !'tvdlf'/'hll'
+   limiter         = 20*'minmod' !'minmod'/'koren'
    check_small_values = .true.
    small_values_method = 'replace'
    small_pressure = 1.d-6
@@ -44,8 +44,8 @@
   typeboundary_min1 = 5*'periodic'
   typeboundary_max1 = 5*'periodic'
   typeboundary_min2 = 5*'special'
-  typeboundary_max2 = 4*'noinflow', 'special'
-  typeghostfill= 'copy'
+  typeboundary_max2 = 'noinflow','noinflow','noinflow','noinflow','special'
+  !typeghostfill= 'copy'
   internalboundary = T
 /
 
@@ -65,14 +65,14 @@
  /
 
  &paramlist
-  courantpar       = 0.6d0
+  courantpar       = 0.2d0
   !dtpar = 1d-5
  /
 
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 5.d0/3.d0
+  hd_gamma = 1.000000001d0 !1.6666667d0 !5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -85,7 +85,7 @@
   fld_adi_tol = 1.d-3
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.
-  fld_const_opacity = .true.
+  fld_const_opacity = .false.
   fld_complete_diffusion_limit = .false.
   fld_bound_min1 = 'periodic'
   fld_bound_max1 = 'periodic'

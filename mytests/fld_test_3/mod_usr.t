@@ -120,7 +120,7 @@ end subroutine initglobaldata_usr
 
     double precision                   :: fld_lambda(ix^S), fld_R(ix^S)
 
-    amplitude = zero !3.d-2
+    amplitude = zero !1.d0-5 !3.d-2
 
     pressure(:,ixGmin2) = p_bound
     density(:,ixGmin2) = rho_bound
@@ -180,8 +180,11 @@ end subroutine initglobaldata_usr
     double precision, intent(in) :: qt, x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
     double precision :: velocity(ixG^S,1:ndir), pressure(ixG^S)
+    double precision :: fld_R(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2)
+    double precision :: fld_kappa(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2)
+    double precision :: fld_lambda(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2)
     double precision :: a(1:nw), b(1:nw), c(1:nw)
-    integer :: i
+    integer :: i,j
 
     select case (iB)
 
@@ -190,8 +193,8 @@ end subroutine initglobaldata_usr
       do i = ixBmin2,ixBmax2
         w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
         w(:,i, mom(1)) = zero
-        velocity(:,i,2) = 2*(w(:,i+1,mom(2))/w(:,i+1,rho_) - w(:,i+2,mom(2))/w(:,i+2,rho_))
-        w(:,i, mom(2)) = velocity(:,i,2)*w(:,i, rho_)
+        velocity(:,i,2) = two*w(:,i+1,mom(2))/w(:,i+1,rho_) - w(:,i+2,mom(2))/w(:,i+2,rho_)
+        w(:,i, mom(2)) = zero !velocity(:,i,2)*w(:,i, rho_)
         w(:,i, e_) = p_bound*dexp(-x(:,i,2)/heff0)/(hd_gamma-one)
         w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*exp(-x(:,i,2)/heff0)
       enddo
@@ -229,23 +232,53 @@ end subroutine initglobaldata_usr
       !   w(i,ixGmax2, r_e) = max(a(r_e)*x(i,ixGmax2,2)**b(r_e),zero)
       ! enddo
 
-      !> exponential interpolation
-      do i = ixGmin1,ixGmax1
-        b(:) = dlog(w(i,ixGmax2-2,:)/w(i,ixGmax2-3,:))*(x(i,ixGmax2-2,2)/x(i,ixGmax2-3,2))
-        a(:)  = w(i,ixGmax2-2,:)*dexp(x(i,ixGmax2-2,2)*(-b(:)))
+      ! !> exponential interpolation
+      ! do i = ixGmin1,ixGmax1
+      !   b(:) = dlog(w(i,ixGmax2-2,:)/w(i,ixGmax2-3,:))*(x(i,ixGmax2-2,2)/x(i,ixGmax2-3,2))
+      !   a(:)  = w(i,ixGmax2-2,:)*dexp(x(i,ixGmax2-2,2)*(-b(:)))
+      !
+      !   !> Density
+      !   w(i,ixGmax2-1, rho_) = a(rho_)*dexp(-x(i,ixGmax2-1,2)*b(rho_))
+      !   w(i,ixGmax2, rho_) = a(rho_)*dexp(-x(i,ixGmax2,2)*b(rho_))
+      !
+      !   !> Gas Energy
+      !   w(i,ixGmax2-1, e_) = a(e_)*dexp(-x(i,ixGmax2-1,2)*b(e_))
+      !   w(i,ixGmax2, e_) = a(e_)*dexp(-x(i,ixGmax2,2)*b(e_))
+      !
+      !   !> Radiation Energy
+      !   w(i,ixGmax2-1, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2-1,2)*b(r_e)),zero)
+      !   w(i,ixGmax2, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2,2)*b(r_e)),zero)
+      ! enddo
 
-        !> Density
-        w(i,ixGmax2-1, rho_) = a(rho_)*dexp(-x(i,ixGmax2-1,2)*b(rho_))
-        w(i,ixGmax2, rho_) = a(rho_)*dexp(-x(i,ixGmax2,2)*b(rho_))
+      !> Conservation law
+      call fld_get_fluxlimiter(w, x, ixG^L, ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_lambda, fld_R)
+      call fld_get_opacity(w, x, ixG^L, ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_kappa)
 
-        !> Gas Energy
-        w(i,ixGmax2-1, e_) = a(e_)*dexp(-x(i,ixGmax2-1,2)*b(e_))
-        w(i,ixGmax2, e_) = a(e_)*dexp(-x(i,ixGmax2,2)*b(e_))
-
-        !> Radiation Energy
-        w(i,ixGmax2-1, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2-1,2)*b(r_e)),zero)
-        w(i,ixGmax2, r_e) = max(a(r_e)*dexp(-x(i,ixGmax2,2)*b(r_e)),zero)
+      do i = ixBmin2-1, ixBmax2-1
+        ! w(:,i+1,r_e) = ((w(:,i-1,mom(2))*w(:,i-1,r_e)/w(:,i+1,rho_)&
+        !  - fld_lambda(:,i-1)*c_light0/(w(:,i-1,rho_)*fld_kappa(:,i-1)) &
+        !  * (w(:,i-2,r_e) - w(:,i,r_e))/abs(x(:,i+1,2)- x(:,i-1,2))&
+        !  - w(:,i,mom(2))*w(:,i,r_e)/w(:,i,rho_))&
+        !  * w(:,i,rho_)*fld_kappa(:,i-1)/(fld_lambda(:,i)*c_light0)*abs(x(:,i+1,2)- x(:,i-1,2)))&
+        !  + w(:,i-1,r_e)
+        w(:,i+1,r_e) = ((w(:,i-1,mom(2))*w(:,i-1,r_e)/w(:,i+1,rho_)&
+         - fld_lambda(:,ixBmin2)*c_light0/(w(:,i-1,rho_)*fld_kappa(:,ixBmin2)) &
+         * (w(:,i-2,r_e) - w(:,i,r_e))/abs(x(:,i+1,2)- x(:,i-1,2))&
+         - w(:,i,mom(2))*w(:,i,r_e)/w(:,i,rho_))&
+         * w(:,i,rho_)*fld_kappa(:,ixBmin2)/(fld_lambda(:,ixBmin2)*c_light0)*abs(x(:,i+1,2)- x(:,i-1,2)))&
+         + w(:,i-1,r_e)
+         do j = ixGmin2,ixGmax2
+           w(j,i+1,r_e) = min(w(j,i+1,r_e), w(j,i,r_e))
+         enddo
       enddo
+
+      ! print*," asdfafsfgvs"
+      !
+      ! do i = ixGmin2, ixGmax2
+      !   print*,  fld_kappa(5,i)/(unit_time*unit_velocity*unit_density)
+      ! enddo
+      !
+      ! stop
 
     case default
       call mpistop("BC not specified")
@@ -275,7 +308,7 @@ end subroutine initglobaldata_usr
       double precision :: pressure(ixI^S)
 
       pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
-      w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one)
+      w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one) + half*(w(ixI^S,mom(1))**two + w(ixI^S,mom(2))**two)/w(ixI^S,rho_)
 
     end subroutine constant_e
 

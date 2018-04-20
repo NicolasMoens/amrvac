@@ -220,9 +220,9 @@ module mod_fld
       !> calc Temperature as p/rho
       !temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
 
-      rho0 = 0.48673604593233560
-      n = 1.d0-1
-      fld_kappa(ixO^S) =  fld_kappa0*(w(ixO^S,iw_rho)/rho0)**n
+      rho0 = 0.9d0 !> Take lower value of rho domain
+      n = 1.d0 !~0.5
+      fld_kappa(ixO^S) =  fld_kappa0*(one + 0.5d0*(w(ixO^S,iw_rho)/rho0)**n)
     endif
   end subroutine fld_get_opacity
 

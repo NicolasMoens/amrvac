@@ -162,6 +162,8 @@ module mod_fld
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
 
+      print*, it
+
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
@@ -188,11 +190,12 @@ module mod_fld
         call Energy_interaction(w, x, ixI^L, ixO^L)
       endif
 
-      ! !> Write energy to file
+      !> Write energy to file
       ! if (it == 0) open(1,file='energy_out0')
-      ! write(1,222) it,global_time,w(4,4,iw_e)
+      ! write(1,222) it,global_time,w(3,3,iw_e),w(3,3,iw_r_e)
       ! if (it == it_max) close(1)
-      ! 222 format(i8,2e15.5E3)
+      ! 222 format(i8,3e15.5E3)
+      ! print*, it, w(3,3,iw_e),w(3,3,r_e)
 
     end if
   end subroutine fld_add_source
@@ -214,18 +217,17 @@ module mod_fld
     if (fld_const_opacity) then
        fld_kappa = fld_kappa0
     else
-      !> Get pressure
-      !call phys_get_pthermal(w,x,ixI^L,ixO^L,temperature)
-      !> calc Temperature as p/rho
-      !temperature(ixO^S) = temperature(ixO^S)/w(ixO^S,iw_rho)
 
-      ! if (it == 0) then
-      !   rho0 = 0.5d0*w(ixOmin1,ixImin2,iw_rho)
-      ! endif
+      !> CNST growth factor
+      rho0 = 0.9d0 !> Take lower value of rho in domain
+      n = 1.d0 !~0.5
+      fld_kappa(ixO^S) = fld_kappa0*(one + half*(w(ixO^S,iw_rho)/rho0)**n)
 
-      rho0 = 0.48673604593233560
-      n = 1.d0-1
-      fld_kappa(ixO^S) =  fld_kappa0*(w(ixO^S,iw_rho)/rho0)**n
+      ! !> Opacity bump
+      ! rho0 = 0.5d0 !> Take central value of rho in domain
+      ! n = 2.d0
+      ! fld_kappa(ixO^S) = fld_kappa0*(one + n*dexp(-dlog(rho0/w(ixO^S,iw_rho))**two))
+
     endif
   end subroutine fld_get_opacity
 
@@ -302,6 +304,11 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    !rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!! THIS IS SJOEMELY !!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end subroutine fld_get_radflux
 
 
@@ -607,6 +614,9 @@ module mod_fld
       D(:,ixImin2,1) = D_center(:,ixImin2)
       D(ixImin1,:,2) = D_center(ixImin1,:)
       D(:,ixImin2,2) = D_center(:,ixImin2)
+
+      !D(:,ixImax2-2,:) = D(:,ixImax2-3,:)
+
     endif
   end subroutine fld_get_diffcoef
 
@@ -799,6 +809,7 @@ module mod_fld
     end do
   end subroutine ADI_boundary_conditions
 
+
   subroutine Diff_boundary_conditions(ixI^L,ixO^L,D)
     use mod_global_parameters
 
@@ -850,6 +861,8 @@ module mod_fld
         Dmn2 = D
       endif
       D(:,ixImin2:ixOmin2-1) = Dmn2(:,ixImin2:ixOmin2-1)
+      ! D(:,ixImin2+1) = Dmn2(:,ixOmin2)
+      ! D(:,ixImin2) = Dmn2(:,ixOmin2)
     case default
       call mpistop("ADI boundary not defined")
     end select

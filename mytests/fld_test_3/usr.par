@@ -15,22 +15,22 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   !ditsave_dat     = 1
-   !ditsave_log     = 1
-   dtsave_dat     = 2.d-5
-   dtsave_log     = 2.d-5
+   !ditsave_dat     = 3
+   !ditsave_log     = 3
+   dtsave_dat     = 2.d-4
+   dtsave_log     = 2.d-4
 /
 
  &stoplist
    time_max = 2.d-2
    dtmin = 1.0d-20
-   !it_max = 100
+   !it_max = 350
 /
 
  &methodlist
    time_integrator = 'onestep'
-   flux_scheme     = 20*'hll'
-   limiter         = 20*'koren'
+   flux_scheme     = 20*'tvdlf' !'tvdlf'/'hll'
+   limiter         = 20*'minmod' !'minmod'/'koren'
    check_small_values = .true.
    small_values_method = 'replace'
    small_pressure = 1.d-6
@@ -44,17 +44,17 @@
   typeboundary_min1 = 5*'periodic'
   typeboundary_max1 = 5*'periodic'
   typeboundary_min2 = 5*'special'
-  typeboundary_max2 = 4*'noinflow', 'special'
-  typeghostfill= 'copy'
+  typeboundary_max2 = 'noinflow','noinflow','noinflow','noinflow','special'
+  !typeghostfill= 'copy'
   internalboundary = T
 /
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 20
-   domain_nx2         = 80
-   block_nx1          = 20
-   block_nx2          = 80
+   domain_nx1         = 200
+   domain_nx2         = 800
+   block_nx1          = 200
+   block_nx2          = 800
    xprobmin1       =  -7.d-4
    xprobmax1       =  7.d-4
    xprobmin2       =  0.0d0
@@ -65,14 +65,14 @@
  /
 
  &paramlist
-  courantpar       = 0.6d0
+  courantpar       = 0.3d0
   !dtpar = 1d-5
  /
 
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 5.d0/3.d0
+  hd_gamma = 1.000000001d0 !1.6666667d0 !5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -82,7 +82,7 @@
   fld_split = .false.
   fld_maxdw = 2000
   fld_bisect_tol = 1.d-3
-  fld_adi_tol = 15.d-1
+  fld_adi_tol = 1.d-3
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.
   fld_const_opacity = .false.

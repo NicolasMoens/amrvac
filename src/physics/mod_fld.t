@@ -162,8 +162,6 @@ module mod_fld
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
 
-      print*, it
-
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
@@ -219,9 +217,9 @@ module mod_fld
     else
 
       !> CNST growth factor
-      rho0 = 0.9d0 !> Take lower value of rho in domain
+      rho0 = 0.5d0 !> Take lower value of rho in domain
       n = 1.d0 !~0.5
-      fld_kappa(ixO^S) = fld_kappa0*(one + half*(w(ixO^S,iw_rho)/rho0)**n)
+      fld_kappa(ixO^S) = fld_kappa0*(one + 0.33d0*(w(ixO^S,iw_rho)/rho0)**n )
 
       ! !> Opacity bump
       ! rho0 = 0.5d0 !> Take central value of rho in domain

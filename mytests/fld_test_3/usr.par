@@ -6,7 +6,7 @@
 
 &filelist
   base_filename='./output/fld'
-  autoconvert      = T
+  autoconvert      = F
   convert_type     = 'vtuBCCmpi'
   saveprim         = T
   nwauxio = 10
@@ -52,10 +52,10 @@
  &meshlist
    refine_max_level   = 1
    domain_nx1         = 200
-   domain_nx2         = 800
+   domain_nx2         = 1600
    block_nx1          = 200
-   block_nx2          = 800
-   xprobmin1       =  -7.d-4
+   block_nx2          = 1600
+   xprobmin1       =  0 !-7.d-4
    xprobmax1       =  7.d-4
    xprobmin2       =  0.0d0
    xprobmax2       =  6.d-3

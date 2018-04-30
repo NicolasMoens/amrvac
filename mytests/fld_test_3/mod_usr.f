@@ -143,16 +143,18 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
   w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
   w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = pressure(ixGmin1:ixGmax1,&
      ixGmin2:ixGmax2)/(hd_gamma - one)
-  !w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S) !> CHANGEd
+  w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = &
+     3.d0*Gamma/(one-Gamma)*pressure(ixGmin1:ixGmax1,ixGmin2:ixGmax2) !> CHANGEd
 
   !---------------------------------------------------------------------------
   ! Call fld_kappa to calculate correct, Opacity dependent Gamma for initial conditions
-  !call fld_get_radflux(w,x,ixG^L,ix^L,rad_Flux) !> CHANGEd
+  call fld_get_radflux(w,x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixmin1,ixmin2,&
+     ixmax1,ixmax2,rad_Flux) !> CHANGEd
   call fld_get_opacity(w,x,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixmin1,ixmin2,&
      ixmax1,ixmax2,opacity)
 
   Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2) = opacity(ixmin1:ixmax1,&
-     ixmin2:ixmax2)*Flux0/(c_light0*g0) !> CHANGEd
+     ixmin2:ixmax2)*rad_Flux(ixmin1:ixmax1,ixmin2:ixmax2,2)/(c_light0*g0) !> CHANGEd
 
   w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 3.d0*Gamma_dep(ixmin1:ixmax1,&
      ixmin2:ixmax2)/(one-Gamma_dep(ixmin1:ixmax1,&

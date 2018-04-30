@@ -137,14 +137,14 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   !pressure(ixG^S) = c_sound0**two*w(ixG^S, rho_) !> FIX THIS
   w(ixG^S, mom(:)) = zero
   w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)
-  !w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S) !> CHANGEd
+  w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S) !> CHANGEd
 
   !---------------------------------------------------------------------------
   ! Call fld_kappa to calculate correct, Opacity dependent Gamma for initial conditions
-  !call fld_get_radflux(w,x,ixG^L,ix^L,rad_Flux) !> CHANGEd
+  call fld_get_radflux(w,x,ixG^L,ix^L,rad_Flux) !> CHANGEd
   call fld_get_opacity(w,x,ixG^L,ix^L,opacity)
 
-  Gamma_dep(ix^S) = opacity(ix^S)*Flux0/(c_light0*g0) !> CHANGEd
+  Gamma_dep(ix^S) = opacity(ix^S)*rad_Flux(ix^S,2)/(c_light0*g0) !> CHANGEd
 
   w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
   !---------------------------------------------------------------------------

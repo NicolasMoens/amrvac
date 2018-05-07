@@ -77,8 +77,11 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     w(ixG^S, rho_) = 1.d0
     w(ixG^S, mom(:)) = zero
-    w(ixG^S, e_) = 1.d-4
-    w(ixG^S,r_e) = 1.d0
+    w(ixG^S, e_) = 1.d-10
+    w(ixG^S,r_e) = one
+
+    print*, w(ixG^S,e_)
+    print*, w(ixG^S,r_e)
 
   end subroutine initial_conditions
 
@@ -109,6 +112,8 @@ end subroutine initglobaldata_usr
     w(ixI^S,rho_) = 1.d0
     w(ixI^S,mom(:)) = zero
     w(ixI^S,r_e) = 1.d0
+
+    ! print*, w(3,3,r_e)
 
   end subroutine constant_r_e
 

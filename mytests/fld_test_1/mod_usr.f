@@ -16,9 +16,9 @@ contains
 
     use mod_constants
 
-    double precision :: rho_0 = 1.d-7
-    double precision :: t_0 = 1.d-11
-    double precision :: e_0 = 1.d12
+    double precision :: rho_0 = one !1.d-7
+    double precision :: t_0 = one !1.d-12
+    double precision :: e_0 = one !1.d12
 
     call set_coordinate_system("Cartesian_2D")
 
@@ -77,15 +77,28 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixGmin1:ixGmax1,ixGmin2:ixGmax2,&
         ndim)
     double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, nw)
+    double precision :: e_eq
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d0
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d-7
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-10
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = one
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) = 1.d12
+
+    e_eq = w(3,3,rho_)/(hd_gamma-one) * (fld_speedofligt_0*w(3,3,&
+       r_e)/(4.0d0*fld_sigma_0))**(1.d0/4.d0)
+
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = 1.d-10*e_eq
 
     print*, w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,e_)
     print*, w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e)
+
+    print*, "E", w(3,3,r_e)
+    print*, "c", fld_speedofligt_0
+    print*, "rho", w(3,3,rho_)
+    print*, "kappa", fld_kappa0
+    print*, "sigma", fld_sigma_0
+    print*, "gamma", hd_gamma
+    print*, "e0", e_eq
 
   end subroutine initial_conditions
 
@@ -116,11 +129,11 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
        1:ndim)
 
-    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d0
+    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d-7
     w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
-    w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1.d0
+    w(ixImin1:ixImax1,ixImin2:ixImax2,r_e) = 1d12
 
-    ! print*, w(3,3,r_e)
+    print*, w(3,3,e_)
 
   end subroutine constant_r_e
 

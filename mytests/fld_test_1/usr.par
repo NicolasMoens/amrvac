@@ -21,9 +21,9 @@
 /
 
  &stoplist
-   !time_max = 2.0d-3
+   time_max = 1.d-7
    dtmin = 1.0d-20
-   it_max = 1000
+   !it_max = 1000
 /
 
  &methodlist
@@ -36,10 +36,10 @@
 
 &boundlist
   nghostcells  =  2
-  typeboundary_min1 = 5*'cont'
-  typeboundary_max1 = 5*'cont'
-  typeboundary_min2 = 5*'cont'
-  typeboundary_max2 = 5*'cont'
+  typeboundary_min1 = 5*'periodic'
+  typeboundary_max1 = 5*'periodic'
+  typeboundary_min2 = 5*'periodic'
+  typeboundary_max2 = 5*'periodic'
   typeghostfill= 'copy'
   internalboundary = T
 /
@@ -60,25 +60,31 @@
  /
 
  &paramlist
-  courantpar       = 0.6d0
-  !dtpar = 1.d-2
+  !courantpar       = 0.6d0
+  dtpar = 1.d-10
  /
 
  &hd_list
   hd_energy = .true.
-  hd_gamma = 5.d0/3.d0
+  hd_gamma = 1.666667d0
   hd_fld = .true.
  /
 
  &fld_list
- fld_kappa0 = 0.34d0
+ fld_kappa0 = 0.4d0
  fld_mu = 0.6d0
  fld_split = .false.
  fld_maxdw = 2000
- fld_bisect_tol = 1.d-35
- fld_adi_tol = 15.d-1
- fld_diff_testcase = .true.
+ fld_bisect_tol = 1.d-5
+ fld_adi_tol = 1.d-3
+ fld_max_fracdt = 100.d0
+ fld_diff_testcase = .false.
  fld_const_opacity = .true.
+ fld_complete_diffusion_limit = .false.
+ fld_bound_min1 = 'periodic'
+ fld_bound_max1 = 'periodic'
+ fld_bound_min2 = 'periodic'
+ fld_bound_max2 = 'periodic'
  fld_Diffusion = .false.
  fld_Rad_force = .false.
  fld_Energy_interact = .true.

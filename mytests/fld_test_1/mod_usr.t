@@ -16,9 +16,9 @@ contains
 
     use mod_constants
 
-    double precision :: rho_0 = 1.d-7
-    double precision :: t_0 = 1.d-11
-    double precision :: e_0 = 1.d12
+    double precision :: rho_0 = one !1.d-7
+    double precision :: t_0 = one !1.d-12
+    double precision :: e_0 = one !1.d12
 
     call set_coordinate_system("Cartesian_2D")
 
@@ -73,15 +73,27 @@ end subroutine initglobaldata_usr
     integer, intent(in)             :: ixG^L, ix^L
     double precision, intent(in)    :: x(ixG^S, ndim)
     double precision, intent(inout) :: w(ixG^S, nw)
+    double precision :: e_eq
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1.d0
+    w(ixG^S, rho_) = 1.d-7
     w(ixG^S, mom(:)) = zero
-    w(ixG^S, e_) = 1.d-10
-    w(ixG^S,r_e) = one
+    w(ixG^S,r_e) = 1.d12
+
+    e_eq = w(3,3,rho_)/(hd_gamma-one) * (fld_speedofligt_0*w(3,3,r_e)/(4.0d0*fld_sigma_0))**(1.d0/4.d0)
+
+    w(ixG^S, e_) = 1.d-10*e_eq
 
     print*, w(ixG^S,e_)
     print*, w(ixG^S,r_e)
+
+    print*, "E", w(3,3,r_e)
+    print*, "c", fld_speedofligt_0
+    print*, "rho", w(3,3,rho_)
+    print*, "kappa", fld_kappa0
+    print*, "sigma", fld_sigma_0
+    print*, "gamma", hd_gamma
+    print*, "e0", e_eq
 
   end subroutine initial_conditions
 
@@ -109,11 +121,11 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1.d0
+    w(ixI^S,rho_) = 1.d-7
     w(ixI^S,mom(:)) = zero
-    w(ixI^S,r_e) = 1.d0
+    w(ixI^S,r_e) = 1d12
 
-    ! print*, w(3,3,r_e)
+    print*, w(3,3,e_)
 
   end subroutine constant_r_e
 

@@ -17,14 +17,14 @@ contains
     use mod_constants
 
      double precision :: rho_0 = one
-     double precision :: t_0 = -dlog(1.d-1)/(8.d0*dpi**two)
+     double precision :: t_0 = one
      double precision :: e_0 = one
 
     call set_coordinate_system("Cartesian_2D")
 
-    unit_velocity = const_c
     unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
-    unit_length = t_0*const_c
+    unit_length = one
+    unit_velocity = unit_length/t_0
 
     ! unit_velocity = one
     ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
@@ -79,8 +79,9 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixG^S, nw)
 
     ! Set initial values for w
-    w(ixG^S, rho_) = 1.d2
-    w(ixG^S, mom(:)) = zero
+    w(ixG^S, rho_) = one
+    w(ixG^S, mom(1)) = one*w(ixG^S, rho_)
+    w(ixG^S, mom(2)) = one*w(ixG^S, rho_)
     w(ixG^S, e_) = one
     w(ixG^S,r_e) =  spotpattern(x,ixG^L,0.d0)
   end subroutine initial_conditions
@@ -95,7 +96,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + dexp(-8.d0 *dpi**two*t1*unit_time)*sin(two*dpi*x(i,j,1))*sin(two*dpi*x(i,j,2))
+      e0(i,j) =  two + sin(two*dpi*(x(i,j,1)-one*t1))*sin(two*dpi*(x(i,j,2)-one*t1))
       enddo
     enddo
 
@@ -125,12 +126,12 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixI^S,1:nw)
     double precision, intent(in)    :: x(ixI^S,1:ndim)
 
-    w(ixI^S,rho_) = 1.d2
-    w(ixI^S,mom(:)) = zero
-    w(ixI^S,e_) = 1.d0
+    w(ixI^S,rho_) = one
+    w(ixI^S,mom(1)) = one*w(ixI^S, rho_)
+    w(ixI^S,mom(2)) = one*w(ixI^S, rho_)
+    w(ixI^S,e_) = one
 
-    ! print*, global_time, dexp(-8.d0 *dpi**two*global_time*unit_time), dexp(dlog(1.d-2)/(8.d0*dpi**two)*8.d0*dpi**two)
-
+    print*, it, global_time
   end subroutine constant_var
 
 !==========================================================================================

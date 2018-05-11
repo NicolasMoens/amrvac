@@ -85,7 +85,7 @@
  fld_bound_min2 = 'periodic'
  fld_bound_max2 = 'periodic'
  fld_Rad_force = .false.
- fld_Diffusion = .true.
- fld_Energy_advect = .false.
+ fld_Diffusion = .false.
+ fld_Energy_advect = .true.
  fld_Energy_interact = .false.
  /

@@ -17,14 +17,14 @@ contains
     use mod_constants
 
      double precision :: rho_0 = one
-     double precision :: t_0 = -dlog(1.d-1)/(8.d0*dpi**two)
+     double precision :: t_0 = one
      double precision :: e_0 = one
 
     call set_coordinate_system("Cartesian_2D")
 
-    unit_velocity = const_c
     unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
-    unit_length = t_0*const_c
+    unit_length = one
+    unit_velocity = unit_length/t_0
 
     ! unit_velocity = one
     ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
@@ -82,8 +82,11 @@ end subroutine initglobaldata_usr
     double precision, intent(inout) :: w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, nw)
 
     ! Set initial values for w
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = 1.d2
-    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(:)) = zero
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, rho_) = one
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(1)) = one*w(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2, rho_)
+    w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, mom(2)) = one*w(ixGmin1:ixGmax1,&
+       ixGmin2:ixGmax2, rho_)
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2, e_) = one
     w(ixGmin1:ixGmax1,ixGmin2:ixGmax2,r_e) =  spotpattern(x,ixGmin1,ixGmin2,&
        ixGmax1,ixGmax2,0.d0)
@@ -100,8 +103,8 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + dexp(-8.d0 *dpi**two*t1*unit_time)*sin(two*dpi*x(i,j,&
-         1))*sin(two*dpi*x(i,j,2))
+      e0(i,j) =  two + sin(two*dpi*(x(i,j,1)-one*t1))*sin(two*dpi*(x(i,j,&
+         2)-one*t1))
       enddo
     enddo
 
@@ -134,12 +137,14 @@ end subroutine initglobaldata_usr
     double precision, intent(in)    :: x(ixImin1:ixImax1,ixImin2:ixImax2,&
        1:ndim)
 
-    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = 1.d2
-    w(ixImin1:ixImax1,ixImin2:ixImax2,mom(:)) = zero
-    w(ixImin1:ixImax1,ixImin2:ixImax2,e_) = 1.d0
+    w(ixImin1:ixImax1,ixImin2:ixImax2,rho_) = one
+    w(ixImin1:ixImax1,ixImin2:ixImax2,mom(1)) = one*w(ixImin1:ixImax1,&
+       ixImin2:ixImax2, rho_)
+    w(ixImin1:ixImax1,ixImin2:ixImax2,mom(2)) = one*w(ixImin1:ixImax1,&
+       ixImin2:ixImax2, rho_)
+    w(ixImin1:ixImax1,ixImin2:ixImax2,e_) = one
 
-    ! print*, global_time, dexp(-8.d0 *dpi**two*global_time*unit_time), dexp(dlog(1.d-2)/(8.d0*dpi**two)*8.d0*dpi**two)
-
+    print*, it, global_time
   end subroutine constant_var
 
 !==========================================================================================

@@ -164,7 +164,10 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
+        print*, "old", w(10,10,iw_r_e)
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
+        print*, "new", w(10,10,iw_r_e)
+        print*, "######################"
       endif
 
       !> Add momentum sourceterms
@@ -444,6 +447,8 @@ module mod_fld
 
     E_loc = E_old
 
+    print*, "halving time"
+
     do i = 1,frac_dt
       !---------------------------------------------------------------
       do while (converged .eqv. .false.)
@@ -568,7 +573,7 @@ module mod_fld
     integer :: idir,i,j
 
     if (fld_diff_testcase) then
-      D = one
+      D = one*unit_time/(unit_length)**two
     else
       !> calculate lambda
       call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)

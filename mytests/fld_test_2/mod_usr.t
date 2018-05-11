@@ -17,19 +17,18 @@ contains
     use mod_constants
 
      double precision :: rho_0 = 1.d0
-    ! double precision :: t_0 = 1.d-2
-    ! double precision :: e_0 = 1.d0
+     double precision :: t_0 = -dlog(1.d-3)/(8.d0*dpi**two)
+     double precision :: e_0 = 1.d0
 
     call set_coordinate_system("Cartesian_2D")
 
-    ! !Fix dimensionless stuff here
-    ! unit_length        = dsqrt(e_0/rho_0)*t_0                                        ! cm
-    ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs) !rho_0/(fld_mu*mp_cgs)                                      ! cm^-3
-    ! unit_temperature   = e_0/(unit_numberdensity*(2.d0+3.d0*He_abundance)*kB_cgs) !e_0/(unit_numberdensity*hd_gamma*kB_cgs)                   ! K
-
     unit_velocity = const_c
     unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
-    unit_length = one/const_c
+    unit_length = t_0*const_c
+
+    ! unit_velocity = one
+    ! unit_numberdensity = rho_0/((1.d0+4.d0*He_abundance)*mp_cgs)
+    ! unit_length = one
 
     ! Initialize units
     usr_set_parameters => initglobaldata_usr
@@ -48,6 +47,7 @@ contains
     call hd_activate()
 
     print*, 'unit_time', unit_time
+    print*, t_0
     print*, 'unit_temperature', unit_temperature
     print*, 'unit_length', unit_length
     print*, 'unit_density', unit_density
@@ -81,10 +81,8 @@ end subroutine initglobaldata_usr
     ! Set initial values for w
     w(ixG^S, rho_) = 1.d2
     w(ixG^S, mom(:)) = zero
-    w(ixG^S, e_) = 1.d0
+    w(ixG^S, e_) = one
     w(ixG^S,r_e) =  spotpattern(x,ixG^L,0.d0)
-
-
   end subroutine initial_conditions
 
   function spotpattern(x,ixG^L,t1) result(e0)
@@ -97,7 +95,7 @@ end subroutine initglobaldata_usr
 
     do i = ixGmin1,ixGmax1
       do j = ixGmin2,ixGmax2
-      e0(i,j) =  two + dexp(-8.d0 *dpi**2*t1)*sin(2*dpi*x(i,j,1))*sin(2*dpi*x(i,j,2))
+      e0(i,j) =  two + dexp(-8.d0 *dpi**two*t1*unit_time)*sin(two*dpi*x(i,j,1))*sin(two*dpi*x(i,j,2))
       enddo
     enddo
 
@@ -131,6 +129,8 @@ end subroutine initglobaldata_usr
     w(ixI^S,mom(:)) = zero
     w(ixI^S,e_) = 1.d0
 
+    ! print*, global_time, dexp(-8.d0 *dpi**two*global_time*unit_time), dexp(dlog(1.d-2)/(8.d0*dpi**two)*8.d0*dpi**two)
+
   end subroutine constant_var
 
 !==========================================================================================
@@ -149,6 +149,7 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   double precision, intent(in)       :: x(ixI^S,1:ndim)
   double precision                   :: w(ixI^S,nw+nwauxio)
   double precision                   :: normconv(0:nw+nwauxio)
+  double precision                   :: theoretical(ixI^S)
   double precision                   :: residual(ixI^S)
   ! double precision                   :: rad_flux(ixI^S,1:ndim), rad_pressure(ixI^S), fld_lambda(ixI^S), fld_R(ixI^S)
 
@@ -156,10 +157,11 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   ! call fld_get_radflux(w, x, ixI^L, ixO^L, rad_flux)
   ! call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
 
-  residual(ixI^S) = spotpattern(x,ixI^L,global_time)
-  residual(ixI^S) = (residual(ixI^S) - w(ixI^S,r_e))/residual(ixI^S)
+  theoretical(ixI^S) = spotpattern(x,ixI^L,global_time)
+  residual(ixI^S) = (theoretical(ixI^S) - w(ixI^S,r_e))/theoretical(ixI^S)
 
-  w(ixO^S,nw+1) = residual(ixO^S)
+  w(ixO^S,nw+1) = theoretical(ixO^S)
+  w(ixO^S,nw+2) = residual(ixO^S)
 
   ! w(ixO^S,nw+1)=rad_flux(ixO^S,1)
   ! w(ixO^S,nw+2)=rad_flux(ixO^S,2)
@@ -175,7 +177,7 @@ subroutine specialvarnames_output(varnames)
   use mod_global_parameters
   character(len=*) :: varnames
 
-  varnames = 'residual'
+  varnames = 'theoretical residual'
   ! varnames = 'F1 F2 RP lam fld_R'
 
 end subroutine specialvarnames_output

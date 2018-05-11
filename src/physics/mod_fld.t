@@ -164,10 +164,7 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
-        print*, "old", w(10,10,iw_r_e)
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
-        print*, "new", w(10,10,iw_r_e)
-        print*, "######################"
       endif
 
       !> Add momentum sourceterms
@@ -410,11 +407,18 @@ module mod_fld
       !> Evolve using ADI
       call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
       call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+      if (ADI_Error .lt. fld_adi_tol) then
+        converged = .true.
+      endif
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
         !> use a smaller timestep than the hydrodynamical one
         call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
+        call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+        if (ADI_Error .lt. fld_adi_tol) then
+          converged = .true.
+        endif
       endif
     enddo
 
@@ -573,7 +577,7 @@ module mod_fld
     integer :: idir,i,j
 
     if (fld_diff_testcase) then
-      D = one*unit_time/(unit_length)**two
+      D =  unit_length/unit_velocity !one*unit_time/(unit_length**two)
     else
       !> calculate lambda
       call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)

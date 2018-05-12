@@ -16,8 +16,10 @@ double precision :: L_star
 double precision :: T_star
 double precision :: R_star
 
+double precision :: Gamma, c_sound, Flux, g_eff, g_grav, H_eff, kappa, c_light
+
 double precision :: Flux0, c_sound0, T_star0, kappa0
-double precision :: c_light0, g0, geff0, heff0, Gamma
+double precision :: c_light0, g0, geff0, heff0, Gamma_edd
 double precision :: L_star0, R_star0, M_star0
 double precision :: tau_bound,  P_bound, rho_bound
 
@@ -35,14 +37,14 @@ subroutine usr_init()
   L_star = (M_star/M_sun)**3.d0*L_sun!*unit_time/unit_pressure*unit_length**3.d0
   R_star = 30*R_sun
   T_star = (L_star/(4d0*dpi*R_star**2*5.67051d-5))**0.25d0
-  tau_bound = 100.d0
+  tau_bound = 50.d0
 
-  call initglobaldata_usr()
+  call initglobaldata_usr
 
-  !Fix dimensionless stuff here
-  unit_length        = R_star
-  unit_numberdensity = 8.955d-8/((1.d0+4.d0*He_abundance)*mp_cgs)
-  unit_temperature   = T_star
+  ! !Fix dimensionless stuff here
+  ! unit_length        = R_star
+  ! unit_numberdensity = 8.955d-8/((1.d0+4.d0*He_abundance)*mp_cgs)
+  ! unit_temperature   = T_star
 
   ! Initialize units
   usr_set_parameters => initglobaldata_usr
@@ -82,6 +84,32 @@ end subroutine usr_init
 subroutine initglobaldata_usr
 use mod_global_parameters
 
+c_sound =  dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))
+g_grav = 6.67e-8*M_star/R_star**two
+
+Flux =  L_star/(4*dpi*R_star**2)
+kappa = 0.34d0
+c_light = const_c
+Gamma_edd = (kappa*Flux)/(c_light*g_grav)
+g_eff = g_grav*(one - Gamma_edd)
+H_eff = c_sound**2/g_eff
+
+p_bound = g_eff*tau_bound/kappa
+rho_bound = p_bound/c_sound**two
+
+print*, "######################################################################"
+print*, "######################################################################"
+print*, c_sound, g_grav, Flux
+print*, kappa, c_light, Gamma_edd
+print*, g_eff, H_eff, p_bound
+print*, rho_bound
+print*, "######################################################################"
+print*, "######################################################################"
+
+unit_length        = H_eff
+unit_numberdensity = rho_bound/((1.d0+4.d0*He_abundance)*mp_cgs)
+unit_velocity      = c_sound
+
 L_star0 = L_star*unit_time/(unit_pressure*unit_length**3.d0)
 R_star0 = R_star/unit_length
 M_star0 = M_star/(unit_density*unit_length**3.d0)
@@ -90,7 +118,7 @@ Flux0 = L_star0/(4*dpi*R_star0**2)
 T_star0 = T_star/unit_temperature
 c_sound0 = dsqrt((1.38d-16*T_star/(0.6*mp_cgs)))/unit_velocity
 
-kappa0 = fld_kappa0 !0.34*(unit_density*unit_length**3.d0)/unit_length**2.d0
+kappa0 = fld_kappa0
 c_light0 = const_c/unit_velocity
 g0 = 6.67e-8*M_star/R_star**2&
 *(unit_density*unit_length/unit_pressure)
@@ -120,7 +148,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   double precision :: opacity(ix^S), Gamma_dep(ix^S)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !5.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -174,12 +202,11 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   print*, "R_star", R_star, L_star
   print*, "Flux", Flux0
 
-  print*, "g0", g0 *unit_length/unit_time**2
-  print*, "geff0", geff0 *unit_length/unit_time**2
-  print*, "c_sound0", c_sound0 *unit_length/unit_time
+  print*, "g0", g0
+  print*, "geff0", geff0
+  print*, "c_sound0", c_sound0
   print*, "Gamma", Gamma
-  print*, "heff0", heff0 *unit_length/ R_star, "Stellar Radii"
-  print*, "heff0", heff0 *unit_length, "cm"
+  print*, "heff0", heff0
   print*, "Tstar0", T_star0
   print*, "Tstar", T_star
 

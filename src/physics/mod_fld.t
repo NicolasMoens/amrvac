@@ -302,11 +302,6 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
-
-    !rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!! THIS IS SJOEMELY !!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end subroutine fld_get_radflux
 
 
@@ -451,6 +446,7 @@ module mod_fld
 
     E_loc = E_old
 
+    print*, it
     print*, "halving time"
 
     do i = 1,frac_dt

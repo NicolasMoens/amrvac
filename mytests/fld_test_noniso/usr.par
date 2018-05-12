@@ -6,7 +6,7 @@
 
 &filelist
   base_filename='./output/fld'
-  autoconvert      = F
+  autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = T
   nwauxio = 10

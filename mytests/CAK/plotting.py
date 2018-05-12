@@ -62,7 +62,6 @@ g_th_1 = q*gamma_e/((1-alpha)*(q*t1)**alpha)*fd
 t2 = q*rho*kappa_e*2.99e10/(R*v_inf**2/(np.power(r,2)*v*23e5))
 g_th_2 = (q*g_e)/(t2**alpha)*fd
 
-
 print 'v_inf', v_inf
 print 'g_e', g_e[3:9]
 print 'g_th_cak', g_th_cak[3:9]
@@ -80,7 +79,6 @@ plt.semilogy(r,rho,label = 'rho')
 plt.semilogy(r_i,rho_i,label = 'rho_init')
 plt.legend()
 
-'''
 plt.figure(3)
 plt.title('Massloss')
 plt.plot(r,M_dot,label = 'Massloss')
@@ -89,7 +87,6 @@ plt.plot(r_i,M_dot_i,label = 'Massloss_init')
 plt.figure(5)
 plt.title('finite disc correction')
 plt.plot(r[:-2],fd[:-2])
-
 
 plt.figure(4)
 plt.title('accelerations')
@@ -101,6 +98,5 @@ plt.plot(r,g_th_2,label = 'g_th_2')
 plt.plot(r,g_e,label = 'g_e')
 plt.legend()
 
-'''
 plt.legend()
 plt.show()

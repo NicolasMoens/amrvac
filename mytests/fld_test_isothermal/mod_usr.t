@@ -126,8 +126,8 @@ geff0 = g0*(one - (kappa0*Flux0)/(c_light0*g0))
 heff0 = c_sound0**2/geff0
 Gamma = (kappa0*Flux0)/(c_light0*g0)
 
-P_bound = geff0*tau_bound/kappa0
-rho_bound = P_bound/c_sound0**two
+P_bound = one
+rho_bound = one
 
 end subroutine initglobaldata_usr
 
@@ -155,14 +155,11 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
 
   do i=ixGmin2,ixGmax2
     pressure(:,i) = p_bound*dexp(-x(:,i,2)/heff0)
-    density(:,i) = pressure(:,i)/c_sound0**2 !rho_bound*dexp(-x(:,i,2)/heff0) !
+    density(:,i) = pressure(:,i)/c_sound0**two !rho_bound*dexp(-x(:,i,2)/heff0) !
   enddo
 
   ! Set initial values for w
-  !call RANDOM_NUMBER(pert)
-  w(ixG^S, rho_) = density(ixG^S)!*(one + amplitude*pert(ixG^S))
-  !> Updqte pressure due to density fluctuations
-  !pressure(ixG^S) = c_sound0**two*w(ixG^S, rho_) !> FIX THIS
+  w(ixG^S, rho_) = density(ixG^S)
   w(ixG^S, mom(:)) = zero
   w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)
   w(ixG^S,r_e) = 3.d0*Gamma/(one-Gamma)*pressure(ixG^S) !> CHANGEd

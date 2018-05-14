@@ -174,8 +174,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   Gamma_dep(ix^S) = opacity(ix^S)*rad_Flux(ix^S,2)/(c_light0*g0) !> CHANGEd
 
   w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
-  !---------------------------------------------------------------------------
-
+  !---------------------------------------------------------------------------  
 
   !> perturb rho
   call RANDOM_NUMBER(pert)

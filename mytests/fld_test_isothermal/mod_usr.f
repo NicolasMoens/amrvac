@@ -186,8 +186,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
   w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 3.d0*Gamma_dep(ixmin1:ixmax1,&
      ixmin2:ixmax2)/(one-Gamma_dep(ixmin1:ixmax1,&
      ixmin2:ixmax2))*pressure(ixmin1:ixmax1,ixmin2:ixmax2)
-  !---------------------------------------------------------------------------
-
+  !---------------------------------------------------------------------------  
 
   !> perturb rho
   call RANDOM_NUMBER(pert)

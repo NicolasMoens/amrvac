@@ -51,28 +51,28 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 200
-   domain_nx2         = 400
-   block_nx1          = 200
-   block_nx2          = 400
+   domain_nx1         = 2000
+   domain_nx2         = 2000
+   block_nx1          = 2000
+   block_nx2          = 2000
    xprobmin1       = -0.5d0
    xprobmax1       = 0.5d0
    xprobmin2       = 0.d0
-   xprobmax2       = 2.d0
+   xprobmax2       = 1.d0
    iprob=1
    refine_threshold   = 20*0.5d0
    derefine_ratio     = 20*1.d0/2.d0
  /
 
  &paramlist
-  !courantpar       = 0.2d0
-  dtpar = 1d-5
+  courantpar       = 0.2d0
+  !dtpar = 1d-5
  /
 
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 1.0000000000001d0 !1.6666667d0 !5.d0/3.d0
+  hd_gamma = 1.001d0 !5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -82,7 +82,7 @@
   fld_split = .false.
   fld_maxdw = 2000
   fld_bisect_tol = 1.d-3
-  fld_adi_tol = 2.d-1
+  fld_adi_tol = 1.d-1
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.
   fld_const_opacity = .true.

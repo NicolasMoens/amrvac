@@ -384,40 +384,45 @@ module mod_fld
 
     do while (converged .eqv. .false.)
 
-      !> Reset E_new
-      E_old(ixI^S) = w(ixI^S,iw_r_e)
-      E_new(ixI^S) = w(ixI^S,iw_r_e)
-
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
         !> If converged in former loop, break loop
         converged = .true.
-        goto 3000
       else
+        !> Reset E_new
+        E_old(ixI^S) = w(ixI^S,iw_r_e)
+        E_new(ixI^S) = w(ixI^S,iw_r_e)
+
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
       endif
 
       !> Evolve using ADI
-      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
-      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-      if (ADI_Error .lt. fld_adi_tol) then
-        converged = .true.
-      endif
-
-      !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
-      if (w_max .gt. fld_maxdw) then
-        !> use a smaller timestep than the hydrodynamical one
-        call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
-        call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+      if (converged .eqv. .false.) then
+        print*, "w_max", w_max
+        call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+        call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
         if (ADI_Error .lt. fld_adi_tol) then
           converged = .true.
         endif
       endif
+
+      !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
+      if (w_max .gt. fld_maxdw) then
+        if (converged .eqv. .false.) then
+          !> use a smaller timestep than the hydrodynamical one
+          call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
+          call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
+          if (ADI_Error .lt. fld_adi_tol) then
+            converged = .true.
+          endif
+        endif
+      endif
+
     enddo
 
-    3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
+    w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
 
 
@@ -446,9 +451,6 @@ module mod_fld
 
     E_loc = E_old
 
-    print*, it
-    print*, "halving time"
-
     do i = 1,frac_dt
       !---------------------------------------------------------------
       do while (converged .eqv. .false.)
@@ -470,12 +472,16 @@ module mod_fld
         !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
         if (w_max .gt. fld_maxdw) goto 5231
 
+        if (ADI_Error .lt. fld_adi_tol) then
+          converged = .true.
+        endif
+
       enddo
       !---------------------------------------------------------------
-      E_loc = E_new
+      7895 E_loc = E_new
     enddo
 
-    7895 dt = saved_dt
+    dt = saved_dt
   end subroutine half_timestep_ADI
 
 
@@ -503,13 +509,14 @@ module mod_fld
 
     !> RHS = D1(E_+ - E) - D1(E - E_-) + D2(E_+ - E) - D2(E - E_-)
     RHS(ixO^S) = &
-    D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
-    - D(ixO^S,1)*(E_new(ixO^S) - E_new(hx1^S))&
+      D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
+    - D(ixO^S,1)*(E_new(ixO^S) - E_new(hx1^S)) &
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
 
     !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
+    print*, it, ADI_Error, E_old(4,4), E_new(4,4)
   end subroutine Error_check_ADI
 
 
@@ -609,8 +616,10 @@ module mod_fld
       !> Go from cell center to cell face
       do i = ixImin1+1, ixImax1
       do j = ixImin2+1, ixImax2
-        D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
-        D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+        ! D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
+        ! D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+        D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
+        D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
       enddo
       enddo
       D(ixImin1,:,1) = D_center(ixImin1,:)

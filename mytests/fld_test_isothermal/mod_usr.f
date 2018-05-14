@@ -37,7 +37,9 @@ subroutine usr_init()
   L_star = (M_star/M_sun)**3.d0*L_sun !*unit_time/unit_pressure*unit_length**3.d0
   R_star = 30*R_sun
   T_star = (L_star/(4d0*dpi*R_star**2*5.67051d-5))**0.25d0
-  tau_bound = 50.d0
+  tau_bound = 100.d0
+
+  print*, M_star, L_star, R_star, T_star, tau_bound
 
   call initglobaldata_usr
 
@@ -152,7 +154,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
       Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2)
   integer :: i
 
-  amplitude = zero !5.d-2 !1.d-5 !3.d-2
+  amplitude = 5.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound

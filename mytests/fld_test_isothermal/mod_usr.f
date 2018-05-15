@@ -154,7 +154,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
       Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !25.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -186,7 +186,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
   w(ixmin1:ixmax1,ixmin2:ixmax2,r_e) = 3.d0*Gamma_dep(ixmin1:ixmax1,&
      ixmin2:ixmax2)/(one-Gamma_dep(ixmin1:ixmax1,&
      ixmin2:ixmax2))*pressure(ixmin1:ixmax1,ixmin2:ixmax2)
-  !---------------------------------------------------------------------------  
+  !---------------------------------------------------------------------------
 
   !> perturb rho
   call RANDOM_NUMBER(pert)
@@ -261,7 +261,7 @@ subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
   select case (iB)
 
   case(3)
-
+    
     do i = ixBmin2,ixBmax2
       w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
       w(:,i, mom(1)) = zero
@@ -269,7 +269,7 @@ subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
          mom(2))/w(:,i+2,rho_)
       w(:,i, mom(2)) = velocity(:,i,2)*w(:,i, rho_)
       w(:,i, e_) = p_bound*dexp(-x(:,i,2)/heff0)/(hd_gamma-one)
-      !w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*dexp(-x(:,i,2)/heff0)
+      w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*dexp(-x(:,i,2)/heff0)
     enddo
 
     !> Fixing the R_E boundary for correct gamma due to opacity fluctuation
@@ -286,7 +286,6 @@ subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
          i+1)/fld_lambda(:,i+1) + w(:,i+2, r_e)
     enddo
     !-------------------------------------------------------------------------
-
 
   case(4)
 
@@ -393,7 +392,6 @@ end subroutine special_bound
        ixImin2:ixImax2)/(hd_gamma - one) + half*(w(ixImin1:ixImax1,&
        ixImin2:ixImax2,mom(1))**two + w(ixImin1:ixImax1,ixImin2:ixImax2,&
        mom(2))**two)/w(ixImin1:ixImax1,ixImin2:ixImax2,rho_)
-
   end subroutine constant_e
 
 !==========================================================================================
@@ -412,7 +410,6 @@ subroutine set_gravitation_field(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,&
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,1) = zero
   gravity_field(ixImin1:ixImax1,ixImin2:ixImax2,&
      2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
-
 end subroutine set_gravitation_field
 
 
@@ -420,12 +417,12 @@ end subroutine set_gravitation_field
 
 subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
    ixOmax1,ixOmax2,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
   use mod_global_parameters
   use mod_physics
 
@@ -483,16 +480,14 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
   w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+9)=D(ixOmin1:ixOmax1,ixOmin2:ixOmax2,1)
   w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+10)=D(ixOmin1:ixOmax1,ixOmin2:ixOmax2,&
      2)
-
 end subroutine specialvar_output
 
 subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
+  ! newly added variables need to be concatenated with the w_names/primnames string
   use mod_global_parameters
   character(len=*) :: varnames
 
   varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam D1 D2'
-
 end subroutine specialvarnames_output
 
 !==========================================================================================

@@ -150,7 +150,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   double precision :: opacity(ix^S), Gamma_dep(ix^S)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !25.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -174,7 +174,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   Gamma_dep(ix^S) = opacity(ix^S)*rad_Flux(ix^S,2)/(c_light0*g0) !> CHANGEd
 
   w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
-  !---------------------------------------------------------------------------  
+  !---------------------------------------------------------------------------
 
   !> perturb rho
   call RANDOM_NUMBER(pert)
@@ -244,14 +244,14 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
   select case (iB)
 
   case(3)
-
+    
     do i = ixBmin2,ixBmax2
       w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
       w(:,i, mom(1)) = zero
       velocity(:,i,2) = two*w(:,i+1,mom(2))/w(:,i+1,rho_) - w(:,i+2,mom(2))/w(:,i+2,rho_)
       w(:,i, mom(2)) = velocity(:,i,2)*w(:,i, rho_)
       w(:,i, e_) = p_bound*dexp(-x(:,i,2)/heff0)/(hd_gamma-one)
-      !w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*dexp(-x(:,i,2)/heff0)
+      w(:,i, r_e) = 3.d0*Gamma/(one-Gamma)*p_bound*dexp(-x(:,i,2)/heff0)
     enddo
 
     !> Fixing the R_E boundary for correct gamma due to opacity fluctuation
@@ -265,7 +265,6 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
       w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,i+1)/fld_lambda(:,i+1) + w(:,i+2, r_e)
     enddo
     !-------------------------------------------------------------------------
-
 
   case(4)
 
@@ -363,7 +362,6 @@ end subroutine special_bound
 
     pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
     w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one) + half*(w(ixI^S,mom(1))**two + w(ixI^S,mom(2))**two)/w(ixI^S,rho_)
-
   end subroutine constant_e
 
 !==========================================================================================
@@ -378,19 +376,18 @@ subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
 
   gravity_field(ixI^S,1) = zero
   gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
-
 end subroutine set_gravitation_field
 
 
 !==========================================================================================
 
 subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
   use mod_global_parameters
   use mod_physics
 
@@ -423,16 +420,14 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   w(ixO^S,nw+8)=big_gamma(ixO^S)
   w(ixO^S,nw+9)=D(ixO^S,1)
   w(ixO^S,nw+10)=D(ixO^S,2)
-
 end subroutine specialvar_output
 
 subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
+  ! newly added variables need to be concatenated with the w_names/primnames string
   use mod_global_parameters
   character(len=*) :: varnames
 
   varnames = 'F1 F2 RP lam fld_R ar1 ar2 Gam D1 D2'
-
 end subroutine specialvarnames_output
 
 !==========================================================================================

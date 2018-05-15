@@ -164,10 +164,8 @@ module mod_fld
 
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
-        print*, "#######################################################"
-        print*, "Before Evolve_E_rad", w(ixImax1-5:ixImax1,300,iw_r_e)
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
-        print*, "After Evolve_E_rad", w(ixImax1-5:ixImax1,300,iw_r_e)
+        print*, it, " ######################"
       endif
 
       !> Add momentum sourceterms
@@ -305,6 +303,11 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    !rad_flux(:,ixOmax2-1, :) = rad_flux(:,ixOmax2-2, :)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!! THIS IS SJOEMELY !!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end subroutine fld_get_radflux
 
 
@@ -374,11 +377,12 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
-    integer :: w_max, frac_dt
+    integer :: w_max, frac_dt, i
     logical :: converged
 
-    E_new(ixI^S) = w(ixI^S,iw_r_e)
+    !> Reset E_new
     E_old(ixI^S) = w(ixI^S,iw_r_e)
+    E_new(ixI^S) = w(ixI^S,iw_r_e)
 
     converged = .false.
     ADI_Error = bigdouble
@@ -386,50 +390,35 @@ module mod_fld
     frac_grid = two
     frac_dt = 1
 
-    print*, "E_old Evolve_E_rad", E_old(ixImax1-5:ixImax1,300)
-
     do while (converged .eqv. .false.)
 
       !> Check if solution converged
       if (ADI_Error .lt. fld_adi_tol) then
         !> If converged in former loop, break loop
         converged = .true.
+        goto 3000
       else
-        !> Reset E_new
-        E_old(ixI^S) = w(ixI^S,iw_r_e)
-        E_new(ixI^S) = w(ixI^S,iw_r_e)
-
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
+        !> Reset E_new
+        E_old(ixI^S) = w(ixI^S,iw_r_e)
+        E_new(ixI^S) = w(ixI^S,iw_r_e)
       endif
 
       !> Evolve using ADI
-      if (converged .eqv. .false.) then
-        call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
-        print*, "E_new Evolve_E_rad", E_new(ixImax1-5:ixImax1,300)
-        call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-        if (ADI_Error .lt. fld_adi_tol) then
-          converged = .true.
-        endif
-      endif
+      call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
+      call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
+      print*, w_max, ADI_Error
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
-        if (converged .eqv. .false.) then
-          !> use a smaller timestep than the hydrodynamical one
-          call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
-          call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
-          if (ADI_Error .lt. fld_adi_tol) then
-            converged = .true.
-          endif
-        endif
+        !> use a smaller timestep than the hydrodynamical one
+        call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
       endif
-
     enddo
 
-    w(ixO^S,iw_r_e) = E_new(ixO^S)
-    print*, "End Evolve_E_rad", E_new(ixImax1-5:ixImax1,300)
+    3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
 
 
@@ -458,6 +447,8 @@ module mod_fld
 
     E_loc = E_old
 
+    print*, "halving time"
+
     do i = 1,frac_dt
       !---------------------------------------------------------------
       do while (converged .eqv. .false.)
@@ -479,16 +470,12 @@ module mod_fld
         !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
         if (w_max .gt. fld_maxdw) goto 5231
 
-        if (ADI_Error .lt. fld_adi_tol) then
-          converged = .true.
-        endif
-
       enddo
       !---------------------------------------------------------------
-      7895 E_loc = E_new
+      E_loc = E_new
     enddo
 
-    dt = saved_dt
+    7895 dt = saved_dt
   end subroutine half_timestep_ADI
 
 
@@ -516,14 +503,13 @@ module mod_fld
 
     !> RHS = D1(E_+ - E) - D1(E - E_-) + D2(E_+ - E) - D2(E - E_-)
     RHS(ixO^S) = &
-      D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
+    D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
     - D(ixO^S,1)*(E_new(ixO^S) - E_new(hx1^S)) &
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
 
-    !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
+    !ADI_Error = maxval(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
-    print*, it, ADI_Error, E_old(4,4), E_new(4,4)
   end subroutine Error_check_ADI
 
 
@@ -544,12 +530,11 @@ module mod_fld
     w0 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/frac_grid
     w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/frac_grid !4.d0
 
-    E_m = E_old
-
-    print*, "E_old Evovle_ADI", E_old(ixImax1-5:ixImax1,300)
+    E_m = E_new
 
     do m = 1,w_max
       E_n = E_old
+
       !> Set pseudotimestep
       dw = w0*(w1/w0)**((m-one)/(w_max-one))
 
@@ -560,9 +545,8 @@ module mod_fld
         call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
         E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
       enddo
-      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
 
-      print*, "1/2 E_m", E_m(ixImax1-5:ixImax1,300)
+      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
 
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
@@ -572,14 +556,9 @@ module mod_fld
         E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
       enddo
 
-
-      print*, "2/2 E_m bef bc", E_m(ixImax1-5:ixImax1,300)
-      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
-      print*, "2/2 E_m aft bc", E_m(ixImax1-5:ixImax1,300)
-
+      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
     enddo
     E_new = E_m
-    print*, "E_n Evovle_ADI", E_new(ixImax1-5:ixImax1,300)
   end subroutine Evolve_ADI
 
 
@@ -596,7 +575,7 @@ module mod_fld
     integer :: idir,i,j
 
     if (fld_diff_testcase) then
-      D =  unit_length/unit_velocity !one*unit_time/(unit_length**two)
+      D = unit_length/unit_velocity
     else
       !> calculate lambda
       call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
@@ -617,7 +596,7 @@ module mod_fld
         D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
       end do
 
-      call Diff_boundary_conditions(ixI^L,ixO^L,D_center)
+      ! call Diff_boundary_conditions(ixI^L,ixO^L,D)
 
       !> Corners
       do i = 0,nghostcells-1
@@ -632,20 +611,16 @@ module mod_fld
       !> Go from cell center to cell face
       do i = ixImin1+1, ixImax1
       do j = ixImin2+1, ixImax2
-        ! D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
-        ! D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+        !D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
+        !D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
         D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
         D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
       enddo
       enddo
-
       D(ixImin1,:,1) = D_center(ixImin1,:)
       D(:,ixImin2,1) = D_center(:,ixImin2)
       D(ixImin1,:,2) = D_center(ixImin1,:)
       D(:,ixImin2,2) = D_center(:,ixImin2)
-
-      call Diff_boundary_conditions(ixI^L,ixO^L,D(:,:,1))
-      call Diff_boundary_conditions(ixI^L,ixO^L,D(:,:,2))
 
       !D(:,ixImax2-2,:) = D(:,ixImax2-3,:)
 
@@ -740,7 +715,6 @@ module mod_fld
 
   subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,Evec)
     use mod_global_parameters
-    implicit none
 
     integer, intent(in) :: ixOmin,ixOmax,ixImin,ixImax
     double precision, intent(in) :: diag(ixImin:ixImax), bvec(ixImin:ixImax)
@@ -769,80 +743,150 @@ module mod_fld
     end do
   end subroutine solve_tridiag
 
+  subroutine solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,d_s,x_s)
+    use mod_global_parameters
+    integer, intent(in) :: ixOmin,ixOmax
+    double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
+    double precision, intent(in) :: x_s(ixOmin:ixOmax)
+    double precision ::  u_s(ixOmin:ixOmax),v_s(ixOmin:ixOmax),y_s(ixOmin:ixOmax), q_s(ixOmin:ixOmax)
+    integer :: i
 
-  subroutine ADI_boundary_conditions(ixI^L,ixO^L,E_m,w)
+    u_s = zero
+    v_s = zero
+
+    u_s(ixOmin) = -b_s(ixOmin)
+    u_s(ixOmax) = c_s(ixOmax)
+
+    v_s(ixOmin) = one
+    v_s(ixOmax) = -a_s(ixOmin)/b_s(ixOmin)
+
+    call solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,y_s,d_s)
+    call solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,q_s,u_s)
+
+    do i = ixOmin,ixOmax
+      x_s(i) = y_s(i) - ((v_s(i)*y_s(i))/(one_s(i) + (v_s(i)*q_s(i))))*q_s(i)
+    enddo
+  end subroutine solve_tridiag_per
+
+  subroutine solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,d_s,x_s)
+    use mod_global_parameters
+    integer, intent(in) :: ixOmin,ixOmax
+    double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
+    double precision, intent(out) :: x_s(ixOmin:ixOmax)
+    double precision :: m_s, bb_s(ixOmin:ixOmax), dd_s(ixOmin:ixOmax)
+    integer :: i
+
+    bb_s = b_s
+    dd_s = d_s
+
+    do i = ixOmin+1,ixOmax
+      m_s = a_s(i)/b_s(i-1)
+      bb_s = b_s(i) - m_s*c_s(i-1)
+      dd_s = d_s(i) - m_s*d_s(i-1)
+    enddo
+
+    x_s(ixOmax) = d_s(ixOmax)/b_s(ixOmax)
+
+    do i = ixOmax - 1, ixOmin, -1
+      x_s(i) = (d_s(i)-c_s(i)*x_s(i+1))/b_s(i)
+    enddo
+
+  end subroutine solve_tridiag_per
+
+  subroutine ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
     use mod_global_parameters
 
     integer, intent(in) :: ixI^L,ixO^L
-    double precision, intent(in) :: w(ixI^S,1:nw)
+    double precision, intent(in) :: w(ixI^S,1:nw), x(ixI^S,1:ndim)
     double precision, intent(inout) :: E_m(ixI^S)
-    integer g, h
-
-    print*, "Begin BC", E_m(ixImax1-5:ixImax1,300)
+    double precision :: fld_R(ixO^S), fld_lambda(ixO^S), fld_kappa(ixO^S)
+    integer g, h, i, j
 
     select case (fld_bound_min1)
     case('periodic')
-      E_m(ixImin1:ixOmin1-1,:) = E_m(ixOmax1-1:ixOmax1,:)
+      E_m(ixImin1:ixOmin1-1,ixOmin2:ixOmax2) = E_m(ixOmax1-1:ixOmax1,ixOmin2:ixOmax2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       E_m(ixOmin1-1,:) = 2.d0*E_m(ixOmin1,:) - E_m(ixOmin1+1,:)
       E_m(ixImin1,:) = 2.d0*E_m(ixOmin1-1,:) - E_m(ixOmin1,:)
     case('fixed')
       E_m(ixImin1:ixOmin1-1,:) = w(ixImin1:ixOmin1-1,:,iw_r_e)
+    case('mean')
+      do i = ixImin2, ixImax2
+        E_m(ixImin1:ixOmin1-1,i) = sum(E_m(ixOmin1:ixOmax1,i))/size(E_m(ixOmin1:ixOmax1,i))
+      enddo
     case default
       call mpistop("ADI boundary not defined")
     end select
 
     select case (fld_bound_max1)
     case('periodic')
-      E_m(ixOmax1+1:ixImax1,:) = E_m(ixOmin1:ixOmin1+1,:)
+      E_m(ixOmax1+1:ixImax1,ixOmin2:ixOmax2) = E_m(ixOmin1:ixOmin1+1,ixOmin2:ixOmax2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       E_m(ixOmax1+1,:) = 2.d0*E_m(ixOmax1,:) - E_m(ixOmax1-1,:)
       E_m(ixImax1,:) = 2.d0*E_m(ixOmax1+1,:) - E_m(ixOmax1,:)
     case('fixed')
       E_m(ixImax1:ixOmax1+1,:) = w(ixImax1:ixOmax1+1,:,iw_r_e)
+    case('mean')
+      do i = ixImin2, ixImax2
+        E_m(ixOmax1+1:ixImax1,i) = sum(E_m(ixOmin1:ixOmax1,i))/size(E_m(ixOmin1:ixOmax1,i))
+        print*, E_m(ixOmax1+1:ixImax1,i)
+      enddo
     case default
       call mpistop("ADI boundary not defined")
     end select
 
     select case (fld_bound_min2)
     case('periodic')
-      E_m(:,ixImin2:ixOmin2-1) = E_m(:,ixOmax2-1:ixOmax2)
+      E_m(ixOmin1:ixOmax1,ixImin2:ixOmin2-1) = E_m(ixOmin1:ixOmax1,ixOmax2-1:ixOmax2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       E_m(:,ixOmin2-1) = 2.d0*E_m(:,ixOmin2) - E_m(:,ixOmin2+1)
       E_m(:,ixImin2) = 2.d0*E_m(:,ixOmin2-1) - E_m(:,ixOmin2)
     case('fixed')
-      E_m(:,ixImin2:ixOmin2-1) = w(:,ixImin2:ixOmin2-1,iw_r_e)
+      E_m(ixOmin1:ixOmax1,ixImin2:ixOmin2-1) = w(ixOmin1:ixOmax1,ixImin2:ixOmin2-1,iw_r_e)
     case default
       call mpistop("ADI boundary not defined")
     end select
 
     select case (fld_bound_max2)
     case('periodic')
-      E_m(:,ixImax2:ixOmax2+1) = E_m(:,ixOmin2+1:ixOmin2)
+      E_m(ixOmin1:ixOmax1,ixImax2:ixOmax2+1) = E_m(ixOmin1:ixOmax1,ixOmin2+1:ixOmin2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       E_m(:,ixOmax2+1) = 2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)
       E_m(:,ixImax2) = 2.d0*E_m(:,ixOmax2+1) - E_m(:,ixOmax2)
     case('fixed')
       E_m(:,ixImax2:ixOmax2+1) = w(:,ixImax2:ixOmax2+1,iw_r_e)
+    case('cons')
+      !> Conservation law
+      call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
+      call fld_get_opacity(w, x, ixI^L, ixO^L, fld_kappa)
+      do i = ixImax2,ixOmax2+1
+        E_m(:,i+1) = ((w(:,i-1,iw_mom(2))*w(:,i-1,r_e)/w(:,i+1,iw_rho)&
+         - fld_lambda(:,ixOmax2)*fld_speedofligt_0/(w(:,i-1,iw_rho)*fld_kappa(:,ixOmax2)) &
+         * (w(:,i-2,r_e) - w(:,i,r_e))/abs(x(:,i+1,2)- x(:,i-1,2))&
+         - w(:,i,iw_mom(2))*w(:,i,r_e)/w(:,i,iw_rho))&
+         * w(:,i,iw_rho)*fld_kappa(:,ixOmax2)/(fld_lambda(:,ixOmax2)*fld_speedofligt_0)*abs(x(:,i+1,2)- x(:,i-1,2)))&
+         + w(:,i-1,r_e)
+         do j = ixImin1,ixImax1
+           E_m(j,i+1) = min(w(j,i+1,r_e), w(j,i,r_e))
+         enddo
+      enddo
     case default
       call mpistop("ADI boundary not defined")
     end select
 
-    !Corners
-    do g = 0,nghostcells-1
-      do h = 0, nghostcells-1
-        E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
-        E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
-        E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
-        E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
-      end do
-    end do
-
-    print*, "End BC", E_m(ixImax1-5:ixImax1,300)
+    ! !Corners
+    ! do g = 0,nghostcells-1
+    !   do h = 0, nghostcells-1
+    !     E_m(ixImin1+g,ixImax2-h) = w(ixImin1+nghostcells,ixImax2-nghostcells,iw_r_e)
+    !     E_m(ixImax1-g,ixImax2-h) = w(ixImax1-nghostcells,ixImax2-nghostcells,iw_r_e)
+    !     E_m(ixImin1+g,ixImin2+h) = w(ixImin1+nghostcells,ixImin2+nghostcells,iw_r_e)
+    !     E_m(ixImax1-g,ixImin2+h) = w(ixImax1-nghostcells,ixImin2+nghostcells,iw_r_e)
+    !   end do
+    ! end do
   end subroutine ADI_boundary_conditions
 
 

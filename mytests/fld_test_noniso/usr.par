@@ -15,16 +15,16 @@
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   !ditsave_dat     = 3
-   !ditsave_log     = 3
-   dtsave_dat     = 2.d-4
-   dtsave_log     = 2.d-4
+   ditsave_dat     = 1
+   ditsave_log     = 1
+   !dtsave_dat     = 2.d-4
+   !dtsave_log     = 2.d-4
 /
 
  &stoplist
    time_max = 2.d-2
    dtmin = 1.0d-20
-   !it_max = 350
+   it_max = 15
 /
 
  &methodlist
@@ -51,10 +51,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 200
-   domain_nx2         = 1600
-   block_nx1          = 200
-   block_nx2          = 1600
+   domain_nx1         = 40
+   domain_nx2         = 160
+   block_nx1          = 40
+   block_nx2          = 160
    xprobmin1       =  0 !-7.d-4
    xprobmax1       =  7.d-4
    xprobmin2       =  0.0d0
@@ -87,10 +87,10 @@
   fld_diff_testcase = .false.
   fld_const_opacity = .false.
   fld_complete_diffusion_limit = .false.
-  fld_bound_min1 = 'periodic'
-  fld_bound_max1 = 'periodic'
+  fld_bound_min1 = 'fixed'
+  fld_bound_max1 = 'fixed'
   fld_bound_min2 = 'fixed'
-  fld_bound_max2 = 'cont'
+  fld_bound_max2 = 'fixed'
   fld_Diffusion = .true.
   fld_Rad_force = .true.
   fld_Energy_interact = .false.

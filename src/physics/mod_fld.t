@@ -524,6 +524,10 @@ module mod_fld
     double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
     double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
+
+    double precision :: a_1(ixOmin1:ixOmax1),b_1(ixOmin1:ixOmax1),c_1(ixOmin1:ixOmax1), d_1(ixOmin1:ixOmax1), x_1(ixOmin1:ixOmax1)
+    double precision :: a_2(ixOmin2:ixOmax2),b_2(ixOmin2:ixOmax2),c_2(ixOmin2:ixOmax2), d_2(ixOmin2:ixOmax2), x_2(ixOmin2:ixOmax2)
+
     double precision :: dw, w0, w1
     integer :: m, j
 
@@ -541,22 +545,34 @@ module mod_fld
       !> Setup matrix and vector for sweeping in direction 1
       call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin2,ixImax2
-        Evec1(ixImin1:ixImax1) = E_m(ixImin1:ixImax1,j)
-        call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
-        E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
+        ! Evec1(ixImin1:ixImax1) = E_m(ixImin1:ixImax1,j)
+        ! call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
+        ! E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
+        a_1(ixOmin1:ixOmax1) = sub1(ixOmin1:ixOmax1,j)
+        b_1(ixOmin1:ixOmax1) = diag1(ixOmin1:ixOmax1,j)
+        c_1(ixOmin1:ixOmax1) = sup1(ixOmin1:ixOmax1,j)
+        d_1(ixOmin1:ixOmax1) = bvec1(ixOmin1:ixOmax1,j)
+        call solve_tridiag_per(ixOmin1,ixOmax1,a_1,b_1,c_1,d_1,x_1)
+        E_m(ixOmin1:ixOmax1,j) = x_1(ixOmin1:ixOmax1)
       enddo
 
-      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
+      !call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
 
       !> Setup matrix and vector for sweeping in direction 2
       call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
       do j = ixImin1,ixImax1
-        Evec2(ixImin2:ixImax2) = E_m(j,ixImin2:ixImax2)
-        call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
-        E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
+        ! Evec2(ixImin2:ixImax2) = E_m(j,ixImin2:ixImax2)
+        ! call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
+        ! E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
+        a_2(ixOmin2:ixOmax2) = sub2(ixOmin2:ixOmax2,j)
+        b_2(ixOmin2:ixOmax2) = diag2(ixOmin2:ixOmax2,j)
+        c_2(ixOmin2:ixOmax2) = sup2(ixOmin2:ixOmax2,j)
+        d_2(ixOmin2:ixOmax2) = bvec2(ixOmin2:ixOmax2,j)
+        call solve_tridiag_per(ixOmin2,ixOmax2,a_2,b_2,c_2,d_2,x_2)
+        E_m(j,ixOmin2:ixOmax2) = x_2(ixOmin2:ixOmax2)
       enddo
 
-      call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
+      !call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
     enddo
     E_new = E_m
   end subroutine Evolve_ADI
@@ -743,11 +759,11 @@ module mod_fld
     end do
   end subroutine solve_tridiag
 
-  subroutine solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,d_s,x_s)
+  subroutine solve_tridiag_per(ixOmin,ixOmax,a_s,b_s,c_s,d_s,x_s)
     use mod_global_parameters
     integer, intent(in) :: ixOmin,ixOmax
     double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
-    double precision, intent(in) :: x_s(ixOmin:ixOmax)
+    double precision, intent(out) :: x_s(ixOmin:ixOmax)
     double precision ::  u_s(ixOmin:ixOmax),v_s(ixOmin:ixOmax),y_s(ixOmin:ixOmax), q_s(ixOmin:ixOmax)
     integer :: i
 
@@ -760,15 +776,15 @@ module mod_fld
     v_s(ixOmin) = one
     v_s(ixOmax) = -a_s(ixOmin)/b_s(ixOmin)
 
-    call solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,y_s,d_s)
-    call solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,q_s,u_s)
+    call solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,d_s,y_s)
+    call solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,q_s,u_s)
 
     do i = ixOmin,ixOmax
-      x_s(i) = y_s(i) - ((v_s(i)*y_s(i))/(one_s(i) + (v_s(i)*q_s(i))))*q_s(i)
+      x_s(i) = y_s(i) - ((v_s(i)*y_s(i))/(one + (v_s(i)*q_s(i))))*q_s(i)
     enddo
   end subroutine solve_tridiag_per
 
-  subroutine solve_tridiag_per(ixOmin,ixOmax,b_s,c_s,a_s,d_s,x_s)
+  subroutine solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,d_s,x_s)
     use mod_global_parameters
     integer, intent(in) :: ixOmin,ixOmax
     double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
@@ -790,8 +806,7 @@ module mod_fld
     do i = ixOmax - 1, ixOmin, -1
       x_s(i) = (d_s(i)-c_s(i)*x_s(i+1))/b_s(i)
     enddo
-
-  end subroutine solve_tridiag_per
+  end subroutine solve_tridiag2
 
   subroutine ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
     use mod_global_parameters

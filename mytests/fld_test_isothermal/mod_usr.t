@@ -216,6 +216,9 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   print*, rho_bound*unit_density, p_bound*unit_pressure
   print*, "factor", 3.d0*Gamma/(one-Gamma)
 
+  print*, "initial", w(:,:,r_e)
+
+
 end subroutine initial_conditions
 
 !==========================================================================================
@@ -263,10 +266,17 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
     (3.d0*p_bound*dexp(-x(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2,2)/heff0)/w(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2, r_e)))
 
     do i = ixBmax2,ixBmin2,-1
-      w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,i+1)/fld_lambda(:,i+1) + w(:,i+2, r_e)
+      w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,ixBmax2+1)/fld_lambda(:,ixBmax2+1) + w(:,i+2, r_e)
+      !w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,i+1)/fld_lambda(:,i+1) + w(:,i+2, r_e)
     enddo
-    !-------------------------------------------------------------------------
 
+    !> Corners?
+    w(ixGmin1,ixBmin2:ixBmax2,r_e) = w(ixGmin1+2,ixBmin2:ixBmax2,r_e)
+    w(ixGmax1-1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-2,ixBmin2:ixBmax2,r_e)
+    w(ixGmin1+1,ixBmin2:ixBmax2,r_e) = w(ixGmin1+2,ixBmin2:ixBmax2,r_e)
+    w(ixGmax1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-2,ixBmin2:ixBmax2,r_e)
+
+    !-------------------------------------------------------------------------
 
   case(4)
 
@@ -325,19 +335,35 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
 
     do i = ixBmin2-1, ixBmax2-1
       w(:,i+1,r_e) = ((w(:,i-1,mom(2))*w(:,i-1,r_e)/w(:,i+1,rho_)&
-       - fld_lambda(:,ixBmin2)*c_light0/(w(:,i-1,rho_)*fld_kappa(:,ixBmin2)) &
+       - fld_lambda(:,ixBmin2-1)*c_light0/(w(:,i-1,rho_)*fld_kappa(:,ixBmin2-1)) &
        * (w(:,i-2,r_e) - w(:,i,r_e))/abs(x(:,i+1,2)- x(:,i-1,2))&
        - w(:,i,mom(2))*w(:,i,r_e)/w(:,i,rho_))&
-       * w(:,i,rho_)*fld_kappa(:,ixBmin2)/(fld_lambda(:,ixBmin2)*c_light0)*abs(x(:,i+1,2)- x(:,i-1,2)))&
+       * w(:,i,rho_)*fld_kappa(:,ixBmin2-1)/(fld_lambda(:,ixBmin2-1)*c_light0)*abs(x(:,i+1,2)- x(:,i-1,2)))&
        + w(:,i-1,r_e)
        do j = ixGmin2,ixGmax2
          w(j,i+1,r_e) = min(w(j,i+1,r_e), w(j,i,r_e))
+         w(j,i+1,r_e) = max(w(j,i+1,r_e), zero)
        enddo
+    enddo
+
+    !> Corners?
+    w(ixGmin1,ixBmin2:ixBmax2,r_e) = w(ixGmin1+2,ixBmin2:ixBmax2,r_e)
+    w(ixGmax1-1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-2,ixBmin2:ixBmax2,r_e)
+    w(ixGmin1+1,ixBmin2:ixBmax2,r_e) = w(ixGmin1+2,ixBmin2:ixBmax2,r_e)
+    w(ixGmax1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-2,ixBmin2:ixBmax2,r_e)
+
+    print*, ixBmin2-1, ixBmax2-1
+
+    do i = ixGmin1,ixGmax1
+      print*, w(i,ixBmin2:ixBmax2, r_e), fld_kappa(i,ixBmin2-1)
     enddo
 
   case default
     call mpistop("BC not specified")
   end select
+
+  print*, "spec_bound", w(:,:,r_e)
+
 end subroutine special_bound
 
 
@@ -365,6 +391,9 @@ end subroutine special_bound
     pressure(ixI^S) = w(ixI^S,rho_)*c_sound0**2
     w(ixI^S, e_) = pressure(ixI^S)/(hd_gamma - one) + half*(w(ixI^S,mom(1))**two + w(ixI^S,mom(2))**two)/w(ixI^S,rho_)
 
+    print*, "int_bound", w(:,:,r_e)
+
+
   end subroutine constant_e
 
 !==========================================================================================
@@ -379,6 +408,9 @@ subroutine set_gravitation_field(ixI^L,ixO^L,wCT,x,gravity_field)
 
   gravity_field(ixI^S,1) = zero
   gravity_field(ixI^S,2) = -6.67e-8*M_star/R_star**2*(unit_time**2/unit_length)
+
+  print*, "grav", wCT(:,:,r_e)
+
 
 end subroutine set_gravitation_field
 
@@ -424,6 +456,9 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   w(ixO^S,nw+8)=big_gamma(ixO^S)
   w(ixO^S,nw+9)=D(ixO^S,1)
   w(ixO^S,nw+10)=D(ixO^S,2)
+
+  print*, "outp", w(:,:,r_e)
+
 
 end subroutine specialvar_output
 

@@ -24,7 +24,7 @@
  &stoplist
    time_max = 5.d1
    dtmin = 1.0d-20
-   !it_max = 350
+   it_max = 1
 /
 
  &methodlist
@@ -51,10 +51,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 200
-   domain_nx2         = 400
-   block_nx1          = 200
-   block_nx2          = 400
+   domain_nx1         = 20
+   domain_nx2         = 40
+   block_nx1          = 20
+   block_nx2          = 40
    xprobmin1       = -0.5d0
    xprobmax1       = 0.5d0
    xprobmin2       = 0.d0
@@ -65,8 +65,8 @@
  /
 
  &paramlist
-  !courantpar       = 0.2d0
-  dtpar = 1d-5
+  courantpar       = 0.2d0
+  !dtpar = 1d-5
  /
 
  &hd_list

@@ -54,7 +54,7 @@ subroutine usr_init()
   usr_special_bc => special_bound
 
   ! Keep the internal energy constant with internal bound
-  usr_internal_bc => constant_e
+  ! usr_internal_bc => constant_e
 
   ! Graviatational field
   usr_gravity => set_gravitation_field

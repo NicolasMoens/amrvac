@@ -158,6 +158,9 @@ module mod_fld
 
     integer :: idir, i
 
+
+    print*, "add_source", w(:,:,r_e)
+
     !> Calculate and add sourceterms
     if(qsourcesplit .eqv. fld_split) then
       active = .true.
@@ -194,6 +197,9 @@ module mod_fld
       ! if (it == it_max) close(1)
       ! 222 format(i8,3e15.5E3)
       ! print*, it, w(3,3,iw_e),w(3,3,r_e)
+
+
+      print*, it
 
     end if
   end subroutine fld_add_source
@@ -400,7 +406,6 @@ module mod_fld
 
       !> Evolve using ADI
       if (converged .eqv. .false.) then
-        print*, "w_max", w_max
         call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
         call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
         if (ADI_Error .lt. fld_adi_tol) then
@@ -495,6 +500,8 @@ module mod_fld
     double precision :: LHS(ixO^S), RHS(ixO^S), D(ixI^S,1:ndim)
     integer :: jx1^L, hx1^L,jx2^L, hx2^L
 
+    integer :: i
+
     jx1^L=ixO^L+kr(1,^D);
     hx1^L=ixO^L-kr(1,^D);
     jx2^L=ixO^L+kr(2,^D);
@@ -516,7 +523,6 @@ module mod_fld
 
     !ADI_Error = max(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
-    print*, it, ADI_Error, E_old(4,4), E_new(4,4)
   end subroutine Error_check_ADI
 
 
@@ -537,7 +543,7 @@ module mod_fld
     w0 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/frac_grid
     w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/frac_grid !4.d0
 
-    E_m = E_new
+    E_m = E_old !E_new
 
     do m = 1,w_max
       E_n = E_old
@@ -616,10 +622,10 @@ module mod_fld
       !> Go from cell center to cell face
       do i = ixImin1+1, ixImax1
       do j = ixImin2+1, ixImax2
-        ! D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
-        ! D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
-        D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
-        D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
+         D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
+         D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+        !D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
+        !D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
       enddo
       enddo
       D(ixImin1,:,1) = D_center(ixImin1,:)
@@ -645,7 +651,7 @@ module mod_fld
     double precision, intent(out):: sup1(ixImin1:ixImax1,ixImin2:ixImax2),bvec1(ixImin1:ixImax1,ixImin2:ixImax2)
     double precision, intent(out):: diag2(ixImin2:ixImax2,ixImin1:ixImax1),sub2(ixImin2:ixImax2,ixImin1:ixImax1)
     double precision, intent(out):: sup2(ixImin2:ixImax2,ixImin1:ixImax1),bvec2(ixImin2:ixImax2,ixImin1:ixImax1)
-    double precision :: D(ixI^S,1:ndim), h, beta(ixImax), delta_x
+    double precision :: D(ixI^S,1:ndim), h, beta(0:ixImax), delta_x
     integer :: idir,i,j
 
     call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)

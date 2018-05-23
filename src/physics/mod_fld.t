@@ -165,7 +165,7 @@ module mod_fld
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
-        print*, it, " ######################"
+        ! print*, it, " ######################"
       endif
 
       !> Add momentum sourceterms
@@ -409,7 +409,7 @@ module mod_fld
       !> Evolve using ADI
       call Evolve_ADI(w, x, E_new, E_old, w_max, frac_grid, ixI^L, ixO^L)
       call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error) !> SHOULD THIS BE DONE EVERY ITERATION???
-      print*, w_max, ADI_Error
+      ! print*, w_max, ADI_Error
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
@@ -447,7 +447,7 @@ module mod_fld
 
     E_loc = E_old
 
-    print*, "halving time"
+    ! print*, "halving time"
 
     do i = 1,frac_dt
       !---------------------------------------------------------------
@@ -510,6 +510,8 @@ module mod_fld
 
     !ADI_Error = maxval(abs((RHS-LHS)/(E_old/dt)))!> Try mean value or smtn
     ADI_Error = sum(abs((RHS-LHS)/(E_old/dt)))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
+
+    print*, ADI_Error
   end subroutine Error_check_ADI
 
 
@@ -521,12 +523,14 @@ module mod_fld
     double precision, intent(in) :: E_old(ixI^S)
     double precision, intent(out):: E_new(ixI^S)
     double precision :: E_m(ixI^S), E_n(ixI^S)
-    double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
-    double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
+    double precision :: diag1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),sub1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision :: sup1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),bvec1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision :: diag2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),sub2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
+    double precision :: sup2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),bvec2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
 
-    double precision :: a_1(ixOmin1:ixOmax1),b_1(ixOmin1:ixOmax1),c_1(ixOmin1:ixOmax1), d_1(ixOmin1:ixOmax1), x_1(ixOmin1:ixOmax1)
-    double precision :: a_2(ixOmin2:ixOmax2),b_2(ixOmin2:ixOmax2),c_2(ixOmin2:ixOmax2), d_2(ixOmin2:ixOmax2), x_2(ixOmin2:ixOmax2)
+    double precision :: a_1(ixOmin1:ixOmax1),b_1(ixOmin1:ixOmax1),c_1(ixOmin1:ixOmax1),d_1(ixOmin1:ixOmax1),x_1(ixOmin1:ixOmax1)
+    double precision :: a_2(ixOmin2:ixOmax2),b_2(ixOmin2:ixOmax2),c_2(ixOmin2:ixOmax2),d_2(ixOmin2:ixOmax2),x_2(ixOmin2:ixOmax2)
 
     double precision :: dw, w0, w1
     integer :: m, j
@@ -534,20 +538,25 @@ module mod_fld
     w0 = (x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2))/frac_grid
     w1 = (x(ixOmax1,ixOmin2,1)-x(ixOmin1,ixOmin2,1))*(x(ixOmin1,ixOmax2,2)-x(ixOmin1,ixOmin2,2))/frac_grid !4.d0
 
-    E_m = E_new
+    E_m = E_old
 
     do m = 1,w_max
       E_n = E_old
 
+      print*, it, m
+
       !> Set pseudotimestep
       dw = w0*(w1/w0)**((m-one)/(w_max-one))
 
+      print*, "1", E_m(8,3:8) - E_m(8,4:9)
+
       !> Setup matrix and vector for sweeping in direction 1
-      call make_matrix(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
-      do j = ixImin2,ixImax2
+      call make_matrix2(x,w,dw,E_m,E_n,1,ixImax1,ixI^L, ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
+      do j = ixOmin2,ixOmax2
         ! Evec1(ixImin1:ixImax1) = E_m(ixImin1:ixImax1,j)
         ! call solve_tridiag(ixOmin1,ixOmax1,ixImin1,ixImax1,diag1(:,j),sub1(:,j),sup1(:,j),bvec1(:,j),Evec1)
         ! E_m(ixOmin1:ixOmax1,j) = Evec1(ixOmin1:ixOmax1)
+
         a_1(ixOmin1:ixOmax1) = sub1(ixOmin1:ixOmax1,j)
         b_1(ixOmin1:ixOmax1) = diag1(ixOmin1:ixOmax1,j)
         c_1(ixOmin1:ixOmax1) = sup1(ixOmin1:ixOmax1,j)
@@ -555,15 +564,15 @@ module mod_fld
         call solve_tridiag_per(ixOmin1,ixOmax1,a_1,b_1,c_1,d_1,x_1)
         E_m(ixOmin1:ixOmax1,j) = x_1(ixOmin1:ixOmax1)
       enddo
-
-      !call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
+      print*, "2", E_m(8,3:8) - E_m(8,4:9)
 
       !> Setup matrix and vector for sweeping in direction 2
-      call make_matrix(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
-      do j = ixImin1,ixImax1
+      call make_matrix2(x,w,dw,E_m,E_n,2,ixImax2,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
+      do j = ixOmin1,ixOmax1
         ! Evec2(ixImin2:ixImax2) = E_m(j,ixImin2:ixImax2)
         ! call solve_tridiag(ixOmin2,ixOmax2,ixImin2,ixImax2,diag2(:,j),sub2(:,j),sup2(:,j),bvec2(:,j),Evec2)
         ! E_m(j,ixOmin2:ixOmax2) = Evec2(ixOmin2:ixOmax2)
+
         a_2(ixOmin2:ixOmax2) = sub2(ixOmin2:ixOmax2,j)
         b_2(ixOmin2:ixOmax2) = diag2(ixOmin2:ixOmax2,j)
         c_2(ixOmin2:ixOmax2) = sup2(ixOmin2:ixOmax2,j)
@@ -571,9 +580,9 @@ module mod_fld
         call solve_tridiag_per(ixOmin2,ixOmax2,a_2,b_2,c_2,d_2,x_2)
         E_m(j,ixOmin2:ixOmax2) = x_2(ixOmin2:ixOmax2)
       enddo
-
-      !call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
+      print*, "3", E_m(8,3:8) - E_m(8,4:9)
     enddo
+
     E_new = E_m
   end subroutine Evolve_ADI
 
@@ -629,8 +638,8 @@ module mod_fld
       do j = ixImin2+1, ixImax2
         !D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
         !D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
-        D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
-        D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
+        D(i,j,1) = (2*(D_center(i,j) + D_center(i-1,j)) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/8.d0
+        D(i,j,2) = (2*(D_center(i,j) + D_center(i,j-1)) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/8.d0
       enddo
       enddo
       D(ixImin1,:,1) = D_center(ixImin1,:)
@@ -729,6 +738,82 @@ module mod_fld
   end subroutine make_matrix
 
 
+  subroutine make_matrix2(x,w,dw,E_m,E_n,sweepdir,ixImax,ixI^L,ixO^L,diag1,sub1,sup1,bvec1,diag2,sub2,sup2,bvec2)
+    use mod_global_parameters
+
+    integer, intent(in) :: sweepdir, ixImax
+    integer, intent(in)          :: ixI^L, ixO^L
+    double precision, intent(in) :: w(ixI^S, 1:nw), dw
+    double precision, intent(in) :: x(ixI^S, 1:ndim)
+    double precision, intent(in) :: E_n(ixI^S), E_m(ixI^S)
+    double precision, intent(out):: diag1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),sub1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision, intent(out):: sup1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),bvec1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision, intent(out):: diag2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),sub2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
+    double precision, intent(out):: sup2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),bvec2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
+    double precision :: D(ixI^S,1:ndim), h, beta1(ixOmin1:ixOmax1), beta2(ixOmin2:ixOmax2), delta_x
+    integer :: idir,i,j
+
+    call fld_get_diffcoef(w, x, ixI^L, ixO^L, D)
+
+    !calculate h
+    if (sweepdir == 1) then
+      delta_x = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)
+      !delta_x = x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)
+    elseif (sweepdir == 2) then
+      !delta_x = x(ixOmin1+1,ixOmin2,1)-x(ixOmin1,ixOmin2,1)
+      delta_x = x(ixOmin1,ixOmin2+1,2)-x(ixOmin1,ixOmin2,2)
+    endif
+    h = dw/(two*delta_x**two)
+
+    !> Matrix depends on sweepingdirection
+    if (sweepdir == 1) then
+      !calculate matrix for sweeping in 1-direction
+      do j = ixOmin2,ixOmax2
+       !calculate beta
+       do i = ixOmin1,ixOmax1
+         beta1(i) = one + dw/(two*dt) + h*(D(i+1,j,1)+D(i,j,1))
+       enddo
+
+       do i = ixOmin1,ixOmax1
+         diag1(i,j) = beta1(i)
+         sub1(i,j) = -h*D(i,j,1)
+         sup1(i,j) = -h*D(i+1,j,1)
+         bvec1(i,j) = (one - h*(D(i,j+1,2)+D(i,j,2)))*E_m(i,j) &
+         + h*D(i,j+1,2)*E_m(i,j+1) + h*D(i,j,2)*E_m(i,j-1) + dw/(two*dt)*E_n(i,j)
+       enddo
+
+       !> Boundary conditions on matrix
+       ! sub1(ixOmin) =
+       ! sup1(ixOmax) =
+      enddo
+
+    elseif ( sweepdir == 2 ) then
+      !calculate matrix for sweeping in 2-direction
+      do j = ixOmin1,ixOmax1
+       !calculate beta
+       do i = ixOmin2,ixOmax2
+         beta2(i) = one + dw/(two*dt) + h*(D(j,i+1,2)+D(j,i,2))
+       enddo
+
+       do i = ixOmin2,ixOmax2
+         diag2(i,j) = beta2(i)
+         sub2(i,j) = -h*D(j,i,2)
+         sup2(i,j) = -h*D(j,i+1,2)
+         bvec2(i,j) = (one - h*(D(j+1,i,1)+D(j,i,1)))*E_m(j,i) &
+         + h*D(j+1,i,1)*E_m(j+1,i) + h*D(j,i,1)*E_m(j-1,i) + dw/(two*dt)*E_n(j,i)
+       enddo
+
+       !> Boundary conditions on matrix
+       ! sub1(ixOmin) =
+       ! sup1(ixOmax) =
+      enddo
+
+    else
+      call mpistop("sweepdirection unknown")
+    endif
+  end subroutine make_matrix2
+
+
   subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,Evec)
     use mod_global_parameters
 
@@ -765,6 +850,7 @@ module mod_fld
     double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
     double precision, intent(out) :: x_s(ixOmin:ixOmax)
     double precision ::  u_s(ixOmin:ixOmax),v_s(ixOmin:ixOmax),y_s(ixOmin:ixOmax), q_s(ixOmin:ixOmax)
+    double precision ::  aa_s(ixOmin:ixOmax),cc_s(ixOmin:ixOmax)
     integer :: i
 
     u_s = zero
@@ -776,12 +862,16 @@ module mod_fld
     v_s(ixOmin) = one
     v_s(ixOmax) = -a_s(ixOmin)/b_s(ixOmin)
 
-    call solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,d_s,y_s)
-    call solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,q_s,u_s)
+    aa_s = a_s
+    cc_s = c_s
 
-    do i = ixOmin,ixOmax
-      x_s(i) = y_s(i) - ((v_s(i)*y_s(i))/(one + (v_s(i)*q_s(i))))*q_s(i)
-    enddo
+    aa_s(ixOmin) = zero
+    cc_s(ixOmax) = zero
+
+    call solve_tridiag2(ixOmin,ixOmax,aa_s,b_s,cc_s,d_s,y_s)
+    call solve_tridiag2(ixOmin,ixOmax,aa_s,b_s,cc_s,u_s,q_s)
+
+    x_s = y_s - (sum(v_s*y_s)/(one + sum(v_s*q_s)))*q_s
   end subroutine solve_tridiag_per
 
   subroutine solve_tridiag2(ixOmin,ixOmax,a_s,b_s,c_s,d_s,x_s)
@@ -789,22 +879,21 @@ module mod_fld
     integer, intent(in) :: ixOmin,ixOmax
     double precision, intent(in) :: a_s(ixOmin:ixOmax),b_s(ixOmin:ixOmax),c_s(ixOmin:ixOmax), d_s(ixOmin:ixOmax)
     double precision, intent(out) :: x_s(ixOmin:ixOmax)
-    double precision :: m_s, bb_s(ixOmin:ixOmax), dd_s(ixOmin:ixOmax)
+    double precision :: cc_s(ixOmin:ixOmax), dd_s(ixOmin:ixOmax)
     integer :: i
 
-    bb_s = b_s
-    dd_s = d_s
+    cc_s(ixOmin) = c_s(ixOmin)/b_s(ixOmin)
+    dd_s(ixOmin) = d_s(ixOmin)/b_s(ixOmin)
 
     do i = ixOmin+1,ixOmax
-      m_s = a_s(i)/b_s(i-1)
-      bb_s = b_s(i) - m_s*c_s(i-1)
-      dd_s = d_s(i) - m_s*d_s(i-1)
+      cc_s = c_s(i)/(b_s(i) - a_s(i)*cc_s(i-1))
+      dd_s = (d_s(i)-a_s(i)*dd_s(i-1))/(b_s(i) - a_s(i)*cc_s(i-1))
     enddo
 
-    x_s(ixOmax) = d_s(ixOmax)/b_s(ixOmax)
+    x_s(ixOmax) = dd_s(ixOmax)
 
-    do i = ixOmax - 1, ixOmin, -1
-      x_s(i) = (d_s(i)-c_s(i)*x_s(i+1))/b_s(i)
+    do i = ixOmax-1, ixOmin, -1
+      x_s(i) = dd_s(i)-cc_s(i)*x_s(i+1)
     enddo
   end subroutine solve_tridiag2
 

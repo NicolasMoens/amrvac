@@ -150,7 +150,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   double precision :: opacity(ix^S), Gamma_dep(ix^S)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !5.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound

@@ -150,7 +150,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   double precision :: opacity(ix^S), Gamma_dep(ix^S)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !25.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -175,7 +175,6 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   !
   ! w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
   !---------------------------------------------------------------------------
-
 
   !> perturb rho
   call RANDOM_NUMBER(pert)
@@ -436,12 +435,12 @@ end subroutine set_gravitation_field
 !==========================================================================================
 
 subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
   use mod_global_parameters
   use mod_physics
 
@@ -478,7 +477,7 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
 end subroutine specialvar_output
 
 subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
+  ! newly added variables need to be concatenated with the w_names/primnames string
   use mod_global_parameters
   character(len=*) :: varnames
 

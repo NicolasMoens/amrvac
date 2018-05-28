@@ -154,7 +154,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
       Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = zero !5.d-2 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound

@@ -170,6 +170,13 @@ subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
   ! w(ixO^S,nw+5)=fld_R(ixO^S)
 
 
+  !> Write error to file
+  if (it == 0) open(1,file='3x3error_out1d-10')
+  write(1,222) it, sum(residual(ixO^S))/((ixOmax1-ixOmin1)*(ixOmax2-ixOmin2))
+  if (it == it_max) close(1)
+  222 format(i8,3e15.5E3)
+  print*, it, sum(residual(ixO^S))
+
 end subroutine specialvar_output
 
 subroutine specialvarnames_output(varnames)

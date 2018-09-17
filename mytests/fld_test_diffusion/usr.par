@@ -75,10 +75,10 @@
  fld_split = .false.
  fld_maxdw = 2000
  fld_bisect_tol = 1.d-5
- fld_adi_tol = 1.d-10
+ fld_adi_tol = 1.d-5
  fld_max_fracdt = 100.d0
  fld_diff_testcase = .true.
- fld_const_opacity = .true.
+ fld_opacity_law = 'const'
  fld_complete_diffusion_limit = .false.
  fld_bound_min1 = 'periodic'
  fld_bound_max1 = 'periodic'

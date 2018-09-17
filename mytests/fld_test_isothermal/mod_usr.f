@@ -154,7 +154,7 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
       Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2)
   integer :: i
 
-  amplitude = 5.d-2 !1.d-5 !3.d-2
+  amplitude = 5.d-1 !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -269,7 +269,7 @@ subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
   case(3)
     do i = ixBmin2,ixBmax2
       w(:,i, rho_) = p_bound*dexp(-x(:,i,2)/heff0)/c_sound0**2
-      w(:,i, mom(1)) = zero
+      w(:,i, mom(1)) = w(:,i, mom(1))
       velocity(:,i,2) = two*w(:,i+1,mom(2))/w(:,i+1,rho_) - w(:,i+2,&
          mom(2))/w(:,i+2,rho_)
       w(:,i, mom(2)) = velocity(:,i,2)*w(:,i, rho_)
@@ -295,6 +295,17 @@ subroutine special_bound(qt,ixGmin1,ixGmin2,ixGmax1,ixGmax2,ixBmin1,ixBmin2,&
     !   w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,ixBmax2+1)/fld_lambda(:,ixBmax2+1) + w(:,i+2, r_e)
     !   !w(:,i, r_e) = (x(:,i+2,2)-x(:,i,2))*g0*w(:,i+1,rho_)*Gamma_dep(:,i+1)/fld_lambda(:,i+1) + w(:,i+2, r_e)
     ! enddo
+
+
+
+    !
+    ! call fld_get_opacity(w, x, ixG^L, ixGmin1+2,ixGmin2+2,ixGmax1-2,ixGmax2-2, fld_kappa)
+    !
+    ! do i = ixBmin2,ixBmax2
+    !   w(:,i, r_e) = fld_kappa(:,ixGmin2+2)*w(:,i, rho_)*3.d0/fld_speedofligt_0&
+    !   *(x(:,i+1,2)-x(:,i,2))*Flux0 + w(:,i+1, r_e)
+    ! enddo
+
 
     !> Corners?
     w(ixGmin1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-3,ixBmin2:ixBmax2,r_e)
@@ -438,8 +449,8 @@ end subroutine special_bound
        ixImin2:ixImax2,mom(1))**two + w(ixImin1:ixImax1,ixImin2:ixImax2,&
        mom(2))**two)/w(ixImin1:ixImax1,ixImin2:ixImax2,rho_)
 
-    w(ixOmin1,:,r_e) = w(ixOmin1+1,:,r_e)
-    w(ixOmax1,:,r_e) = w(ixOmax1-1,:,r_e)
+    ! w(ixOmin1,:,r_e) = w(ixOmin1+1,:,r_e)
+    ! w(ixOmax1,:,r_e) = w(ixOmax1-1,:,r_e)
 
   end subroutine constant_e
 

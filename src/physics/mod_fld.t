@@ -223,17 +223,18 @@ module mod_fld
 
       case('bump')
         !> Opacity bump
-        rho0 = 0.5d-1 !> Take central value of rho in domain
-        n = 0.5d1
+        rho0 = 0.2d0 !0.5d-1
+        n = 7.d0
         sigma_b = 2.d-2
         !fld_kappa(ixO^S) = fld_kappa0*(one + n*dexp(-((rho0  - w(ixO^S,iw_rho))**two)/rho0))
         fld_kappa(ixO^S) = fld_kappa0*(one + n*dexp(-one/sigma_b*(dlog(w(ixO^S,iw_rho)/rho0))**two))
 
-      case('non_iso_kramers')
+      case('non_iso')
         call phys_get_pthermal(w,x,ixI^L,ixO^L,Temp)
         Temp(ixO^S)=Temp(ixO^S)/w(ixO^S,iw_rho)
 
         rho0 = 0.5d0 !> Take lower value of rho in domain
+        Temp0 = one
         n = -7.d0/two
         fld_kappa(ixO^S) = fld_kappa0*(w(ixO^S,iw_rho)/rho0)*(Temp(ixO^S)/Temp0)**n
       case default
@@ -638,10 +639,10 @@ module mod_fld
       !> Go from cell center to cell face
       do i = ixImin1+1, ixImax1
       do j = ixImin2+1, ixImax2
-         D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
-         D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
-        !D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
-        !D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
+         ! D(i,j,1) = (D_center(i,j) + D_center(i-1,j))/two
+         ! D(i,j,2) = (D_center(i,j) + D_center(i,j-1))/two
+        D(i,j,1) = (D_center(i,j) + D_center(i-1,j) + D_center(i,j+1) + D_center(i-1,j+1) + D_center(i,j-1) + D_center(i-1,j-1))/6.d0
+        D(i,j,2) = (D_center(i,j) + D_center(i,j-1) + D_center(i+1,j) + D_center(i+1,j-1) + D_center(i-1,j) + D_center(i-1,j-1))/6.d0
       enddo
       enddo
       D(ixImin1,:,1) = D_center(ixImin1,:)
@@ -782,7 +783,7 @@ module mod_fld
 
     select case (fld_bound_min2)
     case('periodic')
-      E_m(:,ixImin2:ixOmin2-1) = E_m(:,ixOmax2-1:ixOmax2)
+      E_m(:,ixImin2:ixImin2+1) = E_m(:,ixImax2-3:ixImax2-2)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       E_m(:,ixOmin2-1) = 2.d0*E_m(:,ixOmin2) - E_m(:,ixOmin2+1)
@@ -795,7 +796,7 @@ module mod_fld
 
     select case (fld_bound_max2)
     case('periodic')
-      E_m(:,ixImax2:ixOmax2+1) = E_m(:,ixOmin2+1:ixOmin2)
+      E_m(:,ixImax2-1:ixImax2) = E_m(:,ixImin2+2:ixImin2+3)
     case('cont')
       if (nghostcells .ne. 2) call mpistop("continious ADI boundary conditions not defined for more than 2 ghostcells")
       ! E_m(:,ixOmax2+1) = 2.d0*E_m(:,ixOmax2) - E_m(:,ixOmax2-1)

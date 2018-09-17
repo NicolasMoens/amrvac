@@ -5,26 +5,26 @@
 /
 
 &filelist
-  base_filename='./output/noniso'
+  base_filename='./output/const_high_res'
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = F
-  nwauxio = 12
+  nwauxio = 11
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 1
-   ditsave_log     = 1
-   !dtsave_dat     = 1.d-1
-   !dtsave_log     = 1.d-1
+   !ditsave_dat     = 1
+   !ditsave_log     = 1
+   dtsave_dat     = 4.d-1
+   dtsave_log     = 4.d-1
 /
 
  &stoplist
-   time_max = 5.d0
+   time_max = 1.d1
    dtmin = 1.0d-20
-   it_max = 5
+   !it_max = 11
 /
 
  &methodlist
@@ -51,10 +51,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 40
-   domain_nx2         = 80
-   block_nx1          = 40
-   block_nx2          = 80
+   domain_nx1         = 50
+   domain_nx2         = 100
+   block_nx1          = 50
+   block_nx2          = 100
    xprobmin1       = -1.d0
    xprobmax1       = 1.d0
    xprobmin2       = 0.d0
@@ -72,7 +72,7 @@
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 1.6666667d0 !5.d0/3.d0
+  hd_gamma = 1.0000000000001d0 !1.6666667d0 !5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -93,6 +93,6 @@
   fld_bound_max2 = 'cont'
   fld_Diffusion = .true.
   fld_Rad_force = .true.
-  fld_Energy_interact = .true.
+  fld_Energy_interact = .false.
   fld_Energy_advect = .true.
  /

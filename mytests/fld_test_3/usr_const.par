@@ -5,26 +5,26 @@
 /
 
 &filelist
-  base_filename='./output/noniso'
+  base_filename='./output_const/fld'
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
-  saveprim         = F
-  nwauxio = 12
+  saveprim         = T
+  nwauxio = 10
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 1
-   ditsave_log     = 1
-   !dtsave_dat     = 1.d-1
-   !dtsave_log     = 1.d-1
+   !ditsave_dat     = 3
+   !ditsave_log     = 3
+   dtsave_dat     = 4.d-3
+   dtsave_log     = 1.d-3
 /
 
  &stoplist
-   time_max = 5.d0
+   time_max = 2.d-1
    dtmin = 1.0d-20
-   it_max = 50
+   !it_max = 350
 /
 
  &methodlist
@@ -41,8 +41,8 @@
 
 &boundlist
   nghostcells  =  2
-  typeboundary_min1 = 5*'special'
-  typeboundary_max1 = 5*'special'
+  typeboundary_min1 = 5*'periodic'
+  typeboundary_max1 = 5*'periodic'
   typeboundary_min2 = 5*'special'
   typeboundary_max2 = 'noinflow','noinflow','noinflow','noinflow','special'
   !typeghostfill= 'copy'
@@ -51,28 +51,28 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 40
-   domain_nx2         = 80
-   block_nx1          = 40
-   block_nx2          = 80
-   xprobmin1       = -1.d0
-   xprobmax1       = 1.d0
-   xprobmin2       = 0.d0
-   xprobmax2       = 4.d0
+   domain_nx1         = 200
+   domain_nx2         = 1600
+   block_nx1          = 200
+   block_nx2          = 800
+   xprobmin1       =  0 !-7.d-4
+   xprobmax1       =  7.d-4
+   xprobmin2       =  0.0d0
+   xprobmax2       =  6.d-3
    iprob=1
    refine_threshold   = 20*0.5d0
    derefine_ratio     = 20*1.d0/2.d0
  /
 
  &paramlist
-  courantpar       = 0.2d0
-  !dtpar = 1d-8
+  courantpar       = 0.3d0
+  !dtpar = 1d-5
  /
 
  &hd_list
   hd_gravity = .true.
   hd_energy = .true.
-  hd_gamma = 1.6666667d0 !5.d0/3.d0
+  hd_gamma = 1.000000001d0 !1.6666667d0 !5.d0/3.d0
   hd_fld = .true.
  /
 
@@ -82,10 +82,10 @@
   fld_split = .false.
   fld_maxdw = 2000
   fld_bisect_tol = 1.d-3
-  fld_adi_tol = 2.d-2
+  fld_adi_tol = 1.d-3
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.
-  fld_opacity_law = 'const'
+  fld_const_opacity = .true.
   fld_complete_diffusion_limit = .false.
   fld_bound_min1 = 'periodic'
   fld_bound_max1 = 'periodic'
@@ -93,6 +93,6 @@
   fld_bound_max2 = 'cont'
   fld_Diffusion = .true.
   fld_Rad_force = .true.
-  fld_Energy_interact = .true.
+  fld_Energy_interact = .false.
   fld_Energy_advect = .true.
  /

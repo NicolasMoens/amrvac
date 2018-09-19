@@ -316,6 +316,31 @@ module mod_fld
     do idir = 1,ndir
       rad_flux(ixO^S, idir) = -fld_speedofligt_0*fld_lambda(ixO^S)/(fld_kappa(ixO^S)*w(ixO^S,iw_rho)) *grad_r_e(ixO^S,idir)
     end do
+
+    ! !> Cheaty
+    ! rad_flux(:, ixImax2-2, 2) = rad_flux(:, ixImax2-3, 2)
+
+    ! print*, '###############', it, '#################'
+    !
+    ! print*, 'E', w(5, ixOmax2-3:ixImax2, iw_r_e)
+    ! print*, 'gradE1', grad_r_e(5, ixOmax2-3:ixOmax2, 1)
+    ! print*, 'gradE2', grad_r_e(5, ixOmax2-3:ixOmax2, 2)
+    ! print*, 'DE/E', normgrad2(5, ixOmax2-3:ixOmax2)
+    ! print*, 'R', fld_R(5, ixOmax2-3:ixOmax2)
+    ! print*, 'lambda', fld_lambda(5, ixOmax2-3:ixOmax2)
+    ! print*, 'flux', rad_flux(5, ixOmax2-3:ixOmax2, 2)
+    !
+    ! print*, '---------------------------------------------'
+    !
+    ! print*, 'c L/ k rho', -fld_speedofligt_0*fld_lambda(5, ixOmax2-5:ixOmax2)&
+    ! /(fld_kappa(5, ixOmax2-5:ixOmax2)*w(5, ixOmax2-5:ixOmax2,iw_rho))
+    ! print*, 'grad_E', grad_r_e(5, ixOmax2-5:ixOmax2, 2)
+    ! print*, 'flux_calc', -fld_speedofligt_0*fld_lambda(5, ixOmax2-5:ixOmax2)&
+    ! /(fld_kappa(5, ixOmax2-5:ixOmax2)*w(5, ixOmax2-5:ixOmax2,iw_rho))&
+    ! *grad_r_e(5, ixOmax2-5:ixOmax2, 2)
+    !
+    ! print*, '#############################################'
+
   end subroutine fld_get_radflux
 
 
@@ -1010,7 +1035,7 @@ module mod_fld
     double precision :: bisect_a, bisect_b, bisect_c
 
     bisect_a = zero
-    bisect_b = min(abs(c0/c1),abs(c0)**(1.d0/4.d0))
+    bisect_b = max(abs(c0/c1),abs(c0)**(1.d0/4.d0))
 
     do while (abs(Polynomial_Bisection(bisect_b, c0, c1)-Polynomial_Bisection(bisect_a, c0, c1))&
        .ge. fld_bisect_tol*min(e_gas,E_rad))
@@ -1031,7 +1056,7 @@ module mod_fld
       else
         bisect_a = e_gas
         bisect_b = e_gas
-        print*, "IGNORING ENERGY GAS-RAD EXCHANGE "
+        print*, "IGNORING ENERGY GAS-RAD EXCHANGE ", c0, c1
       endif
     enddo
 

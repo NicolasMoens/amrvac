@@ -39,9 +39,7 @@ subroutine usr_init()
   L_star = (M_star/M_sun)**3.d0*L_sun!*unit_time/unit_pressure*unit_length**3.d0
   R_star = 30*R_sun
   T_star = (L_star/(4d0*dpi*R_star**2*5.67051d-5))**0.25d0
-  tau_bound = 100.d0
-
-  print*, M_star, L_star, R_star, T_star, tau_bound
+  tau_bound = 250.d0
 
   call initglobaldata_usr
 
@@ -64,15 +62,6 @@ subroutine usr_init()
   ! Active the physics module
   call hd_activate()
 
-  print*, 'unit_time', unit_time
-  print*, 'unit_temperature', unit_temperature
-  print*, 'unit_length', unit_length
-  print*, 'unit_density', unit_density
-  print*, 'unit_numberdensity', unit_numberdensity
-  print*, 'unit_velocity', unit_velocity
-  print*, 'unit_pressure', unit_pressure
-  print*, '================================================================'
-
 end subroutine usr_init
 
 !===============================================================================
@@ -94,15 +83,6 @@ H_eff = c_sound**2/g_eff
 
 p_bound = g_eff*tau_bound/kappa
 rho_bound = p_bound/c_sound**two
-
-print*, "######################################################################"
-print*, "######################################################################"
-print*, c_sound, g_grav, Flux
-print*, kappa, c_light, Gamma_edd
-print*, g_eff, H_eff, p_bound
-print*, rho_bound, T_bound
-print*, "######################################################################"
-print*, "######################################################################"
 
 unit_length        = H_eff
 unit_numberdensity = rho_bound/((1.d0+4.d0*He_abundance)*mp_cgs)
@@ -157,7 +137,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
 
   integer :: i
 
-  amplitude = 0.001d0 !5.d-1  !1.d-5 !3.d-2
+  amplitude = 0.1d0 !5.d-1  !1.d-5 !3.d-2
 
   pressure(:,ixGmin2) = p_bound
 
@@ -165,8 +145,6 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   a = Flux0*kappa0/(4.d0/3.d0*fld_sigma_0*geff0)
   b = T_bound0**4.d0 - a*p_bound
   c = -geff0*mp_cgs *0.6d0/kB_cgs * unit_pressure/(unit_temperature*unit_density)
-
-  print*, a, b, c
 
   pressure(:,ixGmin2) = p_bound
 
@@ -181,11 +159,6 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
     *c*(pressure(:,i)+k3(:,i))/((a*(pressure(:,i)+k3(:,i))+b)**(1.d0/4.d0))
 
     pressure(:,i+1) = pressure(:,i) + one/6.d0 * (k1(:,i) + two*k2(:,i) + two*k3(:,i) + k4(:,i))
-
-    print*, i, pressure(5,i),&
-     (k1(5,i) + two*k2(5,i) + two*k3(5,i) + k4(5,i)),&
-     (x(5,1+1,2) - x(5,1,2))/6.d0 * (k1(5,i) + two*k2(5,i) + two*k3(5,i) + k4(5,i))
-
   enddo
 
   w(ixG^S, e_) = pressure(ixG^S)/(hd_gamma - one)
@@ -196,10 +169,6 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
   do i = ixGmin2,ixGmax2
     opt_depth(i) =  tau_bound - fld_kappa0*sum(density(5,:i))*(x(5,2,2)-x(5,1,2))
   enddo
-
-  print*, pressure(5,:)
-  print*, density(5,:)
-  print*, temp_init(5,:)
 
   ! Set initial values for w
   w(ixG^S, rho_) = density(ixG^S)
@@ -215,26 +184,7 @@ subroutine initial_conditions(ixG^L, ix^L, w, x)
 
   !> perturb rho
   call RANDOM_NUMBER(pert)
-  w(ixG^S, rho_) = density(ixG^S)*(one + amplitude*pert(ixG^S))
-
-  print*, "R_star", R_star0, L_star0
-  print*, "R_star", R_star, L_star
-  print*, "Flux", Flux0
-
-  print*, "g0", g0
-  print*, "geff0", geff0
-  print*, "c_sound0", c_sound0
-  print*, "Gamma", Gamma
-  print*, "heff0", heff0
-  print*, "Tstar0", T_star0
-  print*, "Tstar", T_star
-
-  ! print*, "density", w(5,3:10,rho_) *unit_density
-  ! print*, "energy", w(5,3:10,e_) *unit_pressure
-  ! print*, "rad_energy", w(5,3:10,r_e) *unit_pressure
-
-  print*, rho_bound*unit_density, p_bound*unit_pressure
-  print*, "factor", 3.d0*Gamma/(one-Gamma)
+  w(ixG^S, rho_) = w(ixG^S, rho_)*(one + amplitude*pert(ixG^S))
 
   ! !> Write energy to file
   ! open(1,file='initial_cond')
@@ -270,6 +220,11 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
   double precision :: Gamma_dep(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2)
   double precision :: fld_lambda(ixGmin1+2:ixGmax1-2,ixGmin2+2:ixGmax2-2)
   double precision :: kb0, mp0
+
+  double precision :: num_flux, dens, op, dy
+  double precision :: lb, ub, cb
+  double precision :: e_ip, e_i, e_im
+
   integer :: i,j
 
   select case (iB)
@@ -286,16 +241,32 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
 
   case(3)
 
-    w(:,1, rho_) = lower_bc_rho(1)
-    w(:,1, e_) = lower_bc_e(1)
-    w(:,1, r_e) = lower_bc_re(1)
-
     w(:,2, rho_) = lower_bc_rho(2)
-    w(:,2, e_) = lower_bc_e(2)
-    w(:,2, r_e) = lower_bc_re(2)
+    w(:,2,mom(2)) = w(:,3,mom(2))
+    w(:,2, r_e) = w(:,3, r_e) - 3.0*w(:,2, rho_)*fld_kappa0*Flux0/fld_speedofligt_0*(x(:,2,2)-x(:,3,2))
+    pressure(:,2) = 1.38d-16/(0.6*mp_cgs)*w(:,2, rho_)/unit_pressure*(unit_temperature*unit_density)&
+    *(fld_speedofligt_0/(4.d0*fld_sigma_0)*w(:,2, r_e))**0.25d0
+    w(:,2, e_) = pressure(:,2)/(hd_gamma - one) + (w(:,2, mom(2))*w(:,2, mom(2))/(2*w(:,2, rho_)))
 
+
+
+    w(:,1, rho_) = lower_bc_rho(1)
+    w(:,1,mom(2)) = w(:,3,mom(2))
+    w(:,1, r_e) = w(:,2, r_e) - 3.0*w(:,1, rho_)*fld_kappa0*Flux0/fld_speedofligt_0*(x(:,1,2)-x(:,2,2))
+    pressure(:,1) = 1.38d-16/(0.6*mp_cgs)*w(:,1, rho_)/unit_pressure*(unit_temperature*unit_density)&
+    *(fld_speedofligt_0/(4.d0*fld_sigma_0)*w(:,1, r_e))**0.25d0
+    w(:,1, e_) = pressure(:,1)/(hd_gamma - one) + (w(:,1, mom(2))*w(:,1, mom(2))/(2*w(:,1, rho_)))
 
   case(4)
+
+    do i = ixGmin1,ixGmax1
+      w(i, ixBmin2, rho_) = min(2*w(i, ixBmin2-1, rho_) - w(i, ixBmin2-2, rho_),w(i, ixBmin2-1, rho_))
+      w(i, ixBmax2, rho_) = min(2*w(i, ixBmax2-1, rho_) - w(i, ixBmax2-2, rho_),w(i, ixBmax2-1, rho_))
+
+      w(i, ixBmin2, mom(:)) = w(i, ixBmin2-1, mom(:))
+      w(i, ixBmax2, mom(:)) = w(i, ixBmax2-1, mom(:))
+    enddo
+
     !> Linear interpolation
     do i = ixGmin1,ixGmax1
       ! w(i, ixBmin2, r_e) = -(w(i, ixBmin2-2, r_e) - w(i, ixBmin2-1, r_e))/(x(i,ixBmin2-2,2) - x(i,ixBmin2-1,2)) &
@@ -303,17 +274,61 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
       ! w(i, ixBmax2, r_e) = -(w(i, ixBmax2-2, r_e) - w(i, ixBmax2-1, r_e))/(x(i,ixBmax2-2,2) - x(i,ixBmax2-1,2)) &
       ! * (x(i,ixBmax2-1,2) - x(i,ixBmax2,2)) + w(i, ixBmax2-1, r_e)
 
-      w(i, ixBmin2, r_e) = w(i, ixBmin2 - 2, rho_)/w(i, ixBmin2 - 1, rho_)&
-      *(w(i, ixBmin2-1, r_e) - w(i, ixBmin2-3, r_e)) + w(i, ixBmin2 - 2, r_e)
-      w(i, ixBmax2, r_e) = w(i, ixBmax2 - 2, rho_)/w(i, ixBmax2 - 1, rho_)&
-      *(w(i, ixBmax2-1, r_e) - w(i, ixBmax2-3, r_e)) + w(i, ixBmax2 - 2, r_e)
+      ! w(i, ixBmin2, r_e) = w(i, ixBmin2 - 2, rho_)/w(i, ixBmin2 - 1, rho_)&
+      ! *(w(i, ixBmin2-1, r_e) - w(i, ixBmin2-3, r_e)) + w(i, ixBmin2 - 2, r_e)
+      ! w(i, ixBmax2, r_e) = w(i, ixBmax2 - 2, rho_)/w(i, ixBmax2 - 1, rho_)&
+      ! *(w(i, ixBmax2-1, r_e) - w(i, ixBmax2-3, r_e)) + w(i, ixBmax2 - 2, r_e)
+
+      ! w(i, ixBmin2, r_e) = (w(i, ixBmin2-1, r_e) - w(i, ixBmin2-3, r_e))&
+      ! *(w(i, ixBmin2-2, rho_)*w(i, ixBmin2-2, r_e))/(w(i, ixBmin2-1, rho_)*w(i, ixBmin2-1, r_e))&
+      ! +w(i, ixBmin2 - 2, r_e)
+      ! w(i, ixBmax2, r_e) = (w(i, ixBmax2-1, r_e) - w(i, ixBmax2-3, r_e))&
+      ! *(w(i, ixBmax2-2, rho_)*w(i, ixBmax2-2, r_e))/(w(i, ixBmax2-1, rho_)*w(i, ixBmax2-1, r_e))&
+      ! +w(i, ixBmax2 - 2, r_e)
+
+      ! w(i, ixBmin2, r_e) = w(i, ixBmin2-1, r_e)
+      ! w(i, ixBmax2, r_e) = w(i, ixBmax2-1, r_e)
 
 
       do j = ixBmin2, ixBmax2
-        w(i,j,r_e) = min(w(i,j,r_e),w(i,j-1,r_e))
-        w(i,j,r_e) = max(w(i,j,r_e), zero)
+        ! w(i,j,r_e) = min(w(i,j,r_e),w(i,j-1,r_e))
+        ! w(i,j,r_e) = max(w(i,j,r_e), zero)
+
+        lb = zero
+        ub = two*w(i,j-1,r_e)
+        cb = (lb + ub)/two
+
+        dens = w(i,j-1,rho_)
+        op = kappa0
+        dy = x(i,j,2) - x(i,j-2,2)
+
+        e_i = w(i,j-1,r_e)
+        e_im = w(i,j-2,r_e)
+
+        do while (abs(num_flux - Flux0)/Flux0 .gt. 1.d-5)
+          if (Numerical_flux(lb, e_i, e_im, op, dens, dy)*Numerical_flux(ub, e_i, e_im, op, dens, dy) .gt. zero) then
+            e_ip = ub
+            num_flux = Flux0
+          else
+
+            if (Numerical_flux(lb, e_i, e_im, op, dens, dy)*Numerical_flux(cb, e_i, e_im, op, dens, dy) .lt. zero) then
+              ub = cb
+            else
+              lb = cb
+            endif
+          cb = (lb + ub)/two
+          e_ip = cb
+          num_flux = Numerical_flux(e_ip, e_i, e_im, op, dens, dy)
+          endif
+        enddo
+        w(i,j,r_e) = e_ip
       enddo
     enddo
+
+    ! do i = ixGmin1,ixGmax1
+    !   print*, i, w(i, ixBmax2-5:,r_e)
+    ! enddo
+
 
     !> Corners?
     w(ixGmin1,ixBmin2:ixBmax2,r_e) = w(ixGmax1-3,ixBmin2:ixBmax2,r_e)
@@ -325,6 +340,22 @@ subroutine special_bound(qt,ixG^L,ixB^L,iB,w,x)
     call mpistop("BC not specified")
   end select
 end subroutine special_bound
+
+
+
+
+function Numerical_flux(e_ip, e_i, e_im, op, dens, dy) result(f)
+  use mod_global_parameters
+
+  double precision, intent(in) :: e_ip, e_i, e_im
+  double precision, intent(in) :: op,dens, dy
+  double precision :: f
+
+  f = -fld_speedofligt_0/(op*dens)&
+  *(2.d0 + (e_ip - e_im)/(2.d0*dy*op*dens*e_i))&
+  /((2.d0*6.d0*dy)/(e_ip - e_im) + (3.d0)/(op*dens*e_i) + (e_ip - e_im)/(op*dens*e_i)**2.d0)
+
+end function Numerical_flux
 
 
 !==========================================================================================

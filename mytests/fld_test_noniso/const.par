@@ -5,26 +5,26 @@
 /
 
 &filelist
-  base_filename='./output/noniso'
+  base_filename='./output/const'
   autoconvert      = T
   convert_type     = 'vtuBCCmpi'
   saveprim         = F
-  nwauxio = 12
+  nwauxio = 11
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   ditsave_dat     = 1
-   ditsave_log     = 1
-   !dtsave_dat     = 1.d-1
-   !dtsave_log     = 1.d-1
+   !ditsave_dat     = 5
+   !ditsave_log     = 5
+   dtsave_dat     = 4.d-1
+   dtsave_log     = 4.d-1
 /
 
  &stoplist
-   time_max = 5.d0
+   time_max = 1.d1
    dtmin = 1.0d-20
-   it_max = 50
+   !it_max = 100
 /
 
  &methodlist
@@ -51,10 +51,10 @@
 
  &meshlist
    refine_max_level   = 1
-   domain_nx1         = 40
-   domain_nx2         = 80
-   block_nx1          = 40
-   block_nx2          = 80
+   domain_nx1         = 20
+   domain_nx2         = 40
+   block_nx1          = 20
+   block_nx2          = 40
    xprobmin1       = -1.d0
    xprobmax1       = 1.d0
    xprobmin2       = 0.d0
@@ -81,7 +81,7 @@
   fld_mu = 0.6d0
   fld_split = .false.
   fld_maxdw = 2000
-  fld_bisect_tol = 1.d-3
+  fld_bisect_tol = 1.d-4
   fld_adi_tol = 2.d-2
   fld_max_fracdt = 100.d0
   fld_diff_testcase = .false.

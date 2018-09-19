@@ -154,7 +154,11 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
       Gamma_dep(ixmin1:ixmax1,ixmin2:ixmax2)
   integer :: i
 
+<<<<<<< HEAD
   amplitude = 5.d-1 !1.d-5 !3.d-2
+=======
+  amplitude = zero !25.d-2 !1.d-5 !3.d-2
+>>>>>>> af21b50c2b25ea6bf0bf0bd00635ccf77318ac13
 
   pressure(:,ixGmin2) = p_bound
   density(:,ixGmin2) = rho_bound
@@ -182,7 +186,6 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
   !
   ! w(ix^S,r_e) = 3.d0*Gamma_dep(ix^S)/(one-Gamma_dep(ix^S))*pressure(ix^S)
   !---------------------------------------------------------------------------
-
 
   !> perturb rho
   call RANDOM_NUMBER(pert)
@@ -477,12 +480,12 @@ end subroutine set_gravitation_field
 
 subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
    ixOmax1,ixOmax2,w,x,normconv)
-! this subroutine can be used in convert, to add auxiliary variables to the
-! converted output file, for further analysis using tecplot, paraview, ....
-! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
-!
-! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
-! corresponding normalization values (default value 1)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  !
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
   use mod_global_parameters
   use mod_physics
 
@@ -545,7 +548,7 @@ subroutine specialvar_output(ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
 end subroutine specialvar_output
 
 subroutine specialvarnames_output(varnames)
-! newly added variables need to be concatenated with the w_names/primnames string
+  ! newly added variables need to be concatenated with the w_names/primnames string
   use mod_global_parameters
   character(len=*) :: varnames
 

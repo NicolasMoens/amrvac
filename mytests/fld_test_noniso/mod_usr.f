@@ -143,7 +143,11 @@ subroutine initial_conditions(ixGmin1,ixGmin2,ixGmax1,ixGmax2, ixmin1,ixmin2,&
 
   integer :: i
 
+<<<<<<< HEAD
   amplitude = 0.1d0 !5.d-1  !1.d-5 !3.d-2
+=======
+  amplitude = zero !5.d-2 !1.d-5 !3.d-2
+>>>>>>> af21b50c2b25ea6bf0bf0bd00635ccf77318ac13
 
   pressure(:,ixGmin2) = p_bound
 

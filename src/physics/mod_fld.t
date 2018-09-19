@@ -166,6 +166,7 @@ module mod_fld
       !> Begin by evolving the radiation energy field
       if (fld_Diffusion) then
         call Evolve_E_rad(w, x, ixI^L, ixO^L)
+        ! print*, it, " ######################"
       endif
 
       !> Add momentum sourceterms
@@ -240,7 +241,6 @@ module mod_fld
       case default
         call mpistop("Doesn't know opacity law")
       end select
-
   end subroutine fld_get_opacity
 
 
@@ -410,10 +410,8 @@ module mod_fld
     double precision, intent(in) :: x(ixI^S, 1:ndim)
     double precision :: E_new(ixI^S), E_old(ixI^S), ADI_Error
     double precision :: frac_grid
-    integer :: w_max, frac_dt
+    integer :: w_max, frac_dt, i
     logical :: converged
-
-    integer :: i
 
     E_new(ixI^S) = w(ixI^S,iw_r_e)
 
@@ -429,14 +427,14 @@ module mod_fld
       if (ADI_Error .lt. fld_adi_tol) then
         !> If converged in former loop, break loop
         converged = .true.
+        goto 3000
       else
-        !> Reset E_new
-        E_old(ixI^S) = w(ixI^S,iw_r_e)
-        E_new(ixI^S) = w(ixI^S,iw_r_e)
-
         !> If no convergence, adapt pseudostepping
         w_max = 2*w_max
         frac_grid = 2*frac_grid
+        !> Reset E_new
+        E_old(ixI^S) = w(ixI^S,iw_r_e)
+        E_new(ixI^S) = w(ixI^S,iw_r_e)
       endif
 
       !> Evolve using ADI
@@ -451,18 +449,12 @@ module mod_fld
 
       !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
       if (w_max .gt. fld_maxdw) then
-        if (converged .eqv. .false.) then
-          !> use a smaller timestep than the hydrodynamical one
-          call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
-          call Error_check_ADI(w, x, E_new, E_old, ixI^L, ixO^L, ADI_Error)
-          if (ADI_Error .lt. fld_adi_tol) then
-            converged = .true.
-          endif
-        endif
+        !> use a smaller timestep than the hydrodynamical one
+        call half_timestep_ADI(w, x, E_new, E_old, ixI^L, ixO^L, converged)
       endif
     enddo
 
-    w(ixO^S,iw_r_e) = E_new(ixO^S)
+    3000 w(ixO^S,iw_r_e) = E_new(ixO^S)
   end subroutine Evolve_E_rad
 
 
@@ -491,6 +483,8 @@ module mod_fld
 
     E_loc = E_old
 
+    ! print*, "halving time"
+
     do i = 1,frac_dt
       !---------------------------------------------------------------
       do while (converged .eqv. .false.)
@@ -512,16 +506,12 @@ module mod_fld
         !> If adjusting pseudostep doesn't work, divide the actual timestep in smaller parts
         if (w_max .gt. fld_maxdw) goto 5231
 
-        if (ADI_Error .lt. fld_adi_tol) then
-          converged = .true.
-        endif
-
       enddo
       !---------------------------------------------------------------
-      7895 E_loc = E_new
+      E_loc = E_new
     enddo
 
-    dt = saved_dt
+    7895 dt = saved_dt
   end subroutine half_timestep_ADI
 
 
@@ -551,7 +541,7 @@ module mod_fld
 
     !> RHS = D1(E_+ - E) - D1(E - E_-) + D2(E_+ - E) - D2(E - E_-)
     RHS(ixO^S) = &
-      D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
+    D(jx1^S,1)*(E_new(jx1^S) - E_new(ixO^S)) &
     - D(ixO^S,1)*(E_new(ixO^S) - E_new(hx1^S)) &
     + D(jx2^S,2)*(E_new(jx2^S) - E_new(ixO^S)) &
     - D(ixO^S,2)*(E_new(ixO^S) - E_new(hx2^S))
@@ -569,9 +559,15 @@ module mod_fld
     double precision, intent(in) :: E_old(ixI^S)
     double precision, intent(out):: E_new(ixI^S)
     double precision :: E_m(ixI^S), E_n(ixI^S)
-    double precision :: diag1(ixImax1,ixImax2),sub1(ixImax1,ixImax2),sup1(ixImax1,ixImax2),bvec1(ixImax1,ixImax2)
-    double precision :: diag2(ixImax2,ixImax1),sub2(ixImax2,ixImax1),sup2(ixImax2,ixImax1),bvec2(ixImax2,ixImax1)
+    double precision :: diag1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),sub1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision :: sup1(ixOmin1:ixOmax1,ixOmin2:ixOmax2),bvec1(ixOmin1:ixOmax1,ixOmin2:ixOmax2)
+    double precision :: diag2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),sub2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
+    double precision :: sup2(ixOmin2:ixOmax2,ixOmin1:ixOmax1),bvec2(ixOmin2:ixOmax2,ixOmin1:ixOmax1)
     double precision :: Evec1(ixImin1:ixImax1), Evec2(ixImin2:ixImax2)
+
+    double precision :: a_1(ixOmin1:ixOmax1),b_1(ixOmin1:ixOmax1),c_1(ixOmin1:ixOmax1),d_1(ixOmin1:ixOmax1),x_1(ixOmin1:ixOmax1)
+    double precision :: a_2(ixOmin2:ixOmax2),b_2(ixOmin2:ixOmax2),c_2(ixOmin2:ixOmax2),d_2(ixOmin2:ixOmax2),x_2(ixOmin2:ixOmax2)
+
     double precision :: dw, w0, w1
     integer :: m, j, i
 
@@ -582,6 +578,8 @@ module mod_fld
 
     do m = 1,w_max
       E_n = E_old
+
+      print*, it, m
 
       !> Set pseudotimestep
       dw = w0*(w1/w0)**((m-one)/(w_max-one))
@@ -611,6 +609,7 @@ module mod_fld
       call ADI_boundary_conditions(ixI^L,ixO^L,E_m,w,x)
 
     enddo
+
     E_new = E_m
   end subroutine Evolve_ADI
 
@@ -628,7 +627,7 @@ module mod_fld
     integer :: idir,i,j
 
     if (fld_diff_testcase) then
-      D =  unit_length/unit_velocity !one*unit_time/(unit_length**two)
+      D = unit_length/unit_velocity
     else
       !> calculate lambda
       call fld_get_fluxlimiter(w, x, ixI^L, ixO^L, fld_lambda, fld_R)
@@ -649,7 +648,7 @@ module mod_fld
         D_center(:,ixImax2-i) = D_center(:,ixImax2-nghostcells)
       end do
 
-      !call Diff_boundary_conditions(ixI^L,ixO^L,D)
+      ! call Diff_boundary_conditions(ixI^L,ixO^L,D)
 
       !> Corners
       do i = 0,nghostcells-1
@@ -768,7 +767,6 @@ module mod_fld
 
   subroutine solve_tridiag(ixOmin,ixOmax,ixImin,ixImax,diag,sub,sup,bvec,Evec)
     use mod_global_parameters
-    implicit none
 
     integer, intent(in) :: ixOmin,ixOmax,ixImin,ixImax
     double precision, intent(in) :: diag(ixImin:ixImax), bvec(ixImin:ixImax)
@@ -804,7 +802,8 @@ module mod_fld
     integer, intent(in) :: ixI^L,ixO^L
     double precision, intent(in) :: w(ixI^S,1:nw),x(ixI^S,1:ndim)
     double precision, intent(inout) :: E_m(ixI^S)
-    integer g, h
+    double precision :: fld_R(ixO^S), fld_lambda(ixO^S), fld_kappa(ixO^S)
+    integer g, h, i, j
 
     select case (fld_bound_min2)
     case('periodic')
